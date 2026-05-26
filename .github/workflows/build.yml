@@ -1,0 +1,24 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: swift --version
+
+      - name: Build (release)
+        run: ./build.sh
+
+      - name: Test
+        run: swift test
+
+      - name: Sanity check binary
+        run: file bin/glance && test -x bin/glance && ./bin/glance --version

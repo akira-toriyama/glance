@@ -1,0 +1,14 @@
+# build artifacts
+/bin/
+/.build/
+
+# release artifacts
+/dist/
+/RAW_NOTES.md
+/RELEASE_NOTES.md
+
+# persistent signing identity (per-machine)
+.signing-id
+
+# macOS
+.DS_Store

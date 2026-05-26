@@ -1,0 +1,27 @@
+name: Commit lint
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          types='feat|fix|perf|refactor|docs|test|build|ci|chore|style|revert'
+          pattern="^:[a-z0-9][a-z0-9_+-]*: (${types})(\([^()]+\))?!?: .+"
+
+          if printf '%s' "$TITLE" | grep -qE "$pattern"; then
+            echo "✓ PR title matches gitmoji + Conventional Commits"
+            exit 0
+          fi
+
+          echo "✖ PR title violates convention." >&2
+          echo "  got: $TITLE" >&2
+          echo "  form: <:gitmoji:> <type>(<scope>)<!>: <subject>" >&2
+          echo "  type: ${types}" >&2
+          exit 1
