@@ -24,6 +24,31 @@ public final class ViewerPanel {
     private static let baseFontSize: CGFloat = 16
     private static let markdownFontBumpPoints: CGFloat = 3
 
+    /// 行間 / 余白 / block-level 装飾の constants。MacDown GitHub2.css 等の
+    /// 値を踏襲しつつ、native NSAttributedString に翻訳したもの。
+    private static let bodyLineSpacing: CGFloat = 4
+    private static let bodyTextInset = NSSize(width: 18, height: 14)
+    private static let codeBlockIndent: CGFloat = 10
+    private static let codeBlockParagraphSpacing: CGFloat = 6
+    private static let blockquoteIndent: CGFloat = 16
+
+    /// vibrancy backdrop の上に乗せても見える程度の薄い tint。Light/Dark を
+    /// dynamicProvider で切り替える (NSColor 系の semantic だと vibrancy 上で
+    /// 見えづらいので独自値)。
+    private static let inlineCodeBackground = NSColor(name: nil) { app in
+        let dark = app.bestMatch(from: [.darkAqua, .vibrantDark]) != nil
+        return dark
+            ? NSColor(white: 1.0, alpha: 0.10)
+            : NSColor(white: 0.0, alpha: 0.07)
+    }
+
+    private static let codeBlockBackground = NSColor(name: nil) { app in
+        let dark = app.bestMatch(from: [.darkAqua, .vibrantDark]) != nil
+        return dark
+            ? NSColor(white: 1.0, alpha: 0.06)
+            : NSColor(white: 0.0, alpha: 0.04)
+    }
+
     /// markdown=true は NSAttributedString(markdown:) で rich render。失敗時は
     /// plain text に fallback (例: parse エラー)。block-level (見出し / リスト /
     /// code block) も描画する `.full` を使う。
@@ -34,7 +59,7 @@ public final class ViewerPanel {
 
         // contentView を組み立ててから text の自然高さで panel 高さを決める。
         // ユーザが --height で明示した場合はそれを尊重 (clamp なし)。
-        let textInset = NSSize(width: 12, height: 10)
+        let textInset = Self.bodyTextInset
         let attributed = Self.renderAttributed(text: text, markdown: args.markdown)
 
         let contentWidth = w
@@ -123,12 +148,9 @@ public final class ViewerPanel {
         textView.usesFindBar = true
 
         textView.textStorage?.setAttributedString(attributed)
-        // NSAttributedString(markdown:) の foreground は applicable な場合
-        // ハードコードされていることがあるので labelColor で上書き。
-        textView.textStorage?.addAttribute(
-            .foregroundColor, value: NSColor.labelColor,
-            range: NSRange(location: 0,
-                           length: textView.textStorage?.length ?? 0))
+        // foregroundColor / typography は renderAttributed 内で確定済み。
+        // ここで上書きすると blockquote の secondaryLabelColor 等が消えるので
+        // 触らない。
 
         scroll.documentView = textView
         blur.addSubview(scroll)
@@ -139,14 +161,17 @@ public final class ViewerPanel {
     /// は plain text を attributed 化して返す。auto-size の高さ計算で使うため、
     /// init の最序盤で 1 度だけ呼ぶ。markdown 側は heading 階層を保ったまま
     /// pointSize を底上げする (デフォルトの 13pt body は glance 用途には小さい)。
+    /// labelColor / typography polish もここで全て確定させる (init 側で再上書き
+    /// しないため)。
     private static func renderAttributed(text: String,
                                          markdown: Bool) -> NSAttributedString {
         let font = NSFont.systemFont(ofSize: baseFontSize)
+        let mutable: NSMutableAttributedString
         if markdown,
            let attr = try? NSAttributedString(
             markdown: text,
             options: .init(interpretedSyntax: .full)) {
-            let mutable = NSMutableAttributedString(attributedString: attr)
+            mutable = NSMutableAttributedString(attributedString: attr)
             let full = NSRange(location: 0, length: mutable.length)
             mutable.enumerateAttribute(.font, in: full) { value, range, _ in
                 let original = (value as? NSFont)
@@ -157,12 +182,112 @@ public final class ViewerPanel {
                     ?? original
                 mutable.addAttribute(.font, value: bumped, range: range)
             }
-            return mutable
+        } else {
+            mutable = NSMutableAttributedString(
+                string: text,
+                attributes: [.font: font])
         }
-        return NSAttributedString(
-            string: text,
-            attributes: [.font: font,
-                         .foregroundColor: NSColor.labelColor])
+        // baseline: 全 run に labelColor を敷く。NSAttributedString(markdown:) が
+        // ハードコードした foreground を払拭する目的。後段の applyTypography で
+        // link / blockquote だけ別色に塗り替える。
+        let full = NSRange(location: 0, length: mutable.length)
+        mutable.addAttribute(.foregroundColor,
+                             value: NSColor.labelColor, range: full)
+        applyTypography(mutable)
+        return mutable
+    }
+
+    /// PresentationIntent ベースの block-level スタイル + inline code 背景 +
+    /// link 色 + 行間。NSAttributedString(markdown:) が返す attribute を読んで
+    /// glance 用に塗り直す。
+    private static func applyTypography(_ s: NSMutableAttributedString) {
+        let full = NSRange(location: 0, length: s.length)
+
+        // 行間: 既存の paragraphStyle を尊重しつつ lineSpacing だけ底上げ。
+        // リスト等で indent が入っている run も壊さない。
+        s.enumerateAttribute(.paragraphStyle, in: full) { value, range, _ in
+            let ps = (value as? NSParagraphStyle).flatMap {
+                $0.mutableCopy() as? NSMutableParagraphStyle
+            } ?? defaultBodyParagraphStyle()
+            ps.lineSpacing = max(ps.lineSpacing, bodyLineSpacing)
+            s.addAttribute(.paragraphStyle, value: ps, range: range)
+        }
+
+        // inline code (monospace font run) に薄い背景。code block 内の run も
+        // 一旦塗られるが、後段で code block 専用色に上書きされる。
+        s.enumerateAttribute(.font, in: full) { value, range, _ in
+            guard let f = value as? NSFont, isMonospace(f) else { return }
+            s.addAttribute(.backgroundColor,
+                           value: inlineCodeBackground, range: range)
+        }
+
+        // block-level (code block / blockquote) を PresentationIntent で識別。
+        // macOS 12+ で NSAttributedString(markdown:) が付与する attribute。
+        let intentKey = NSAttributedString.Key(
+            rawValue: "NSPresentationIntentAttributeName")
+        s.enumerateAttribute(intentKey, in: full) { value, range, _ in
+            guard let intent = value as? PresentationIntent else { return }
+            for component in intent.components {
+                switch component.kind {
+                case .codeBlock:
+                    let ps = paragraphStyle(from: s, at: range.location)
+                    ps.firstLineHeadIndent = codeBlockIndent
+                    ps.headIndent = codeBlockIndent
+                    ps.paragraphSpacingBefore = codeBlockParagraphSpacing
+                    ps.paragraphSpacing = codeBlockParagraphSpacing
+                    s.addAttribute(.paragraphStyle, value: ps, range: range)
+                    s.addAttribute(.backgroundColor,
+                                   value: codeBlockBackground, range: range)
+                case .blockQuote:
+                    let ps = paragraphStyle(from: s, at: range.location)
+                    ps.firstLineHeadIndent = blockquoteIndent
+                    ps.headIndent = blockquoteIndent
+                    s.addAttribute(.paragraphStyle, value: ps, range: range)
+                    s.addAttribute(.foregroundColor,
+                                   value: NSColor.secondaryLabelColor,
+                                   range: range)
+                default:
+                    break
+                }
+            }
+        }
+
+        // link: accent 色 + underline。NSAttributedString(markdown:) は autolink /
+        // [text](url) どちらも .link を立てる。
+        s.enumerateAttribute(.link, in: full) { value, range, _ in
+            guard value != nil else { return }
+            s.addAttribute(.foregroundColor,
+                           value: NSColor.controlAccentColor, range: range)
+            s.addAttribute(.underlineStyle,
+                           value: NSUnderlineStyle.single.rawValue, range: range)
+        }
+    }
+
+    private static func defaultBodyParagraphStyle() -> NSMutableParagraphStyle {
+        let p = NSMutableParagraphStyle()
+        p.lineSpacing = bodyLineSpacing
+        return p
+    }
+
+    private static func paragraphStyle(from s: NSAttributedString,
+                                       at loc: Int) -> NSMutableParagraphStyle {
+        if let existing = s.attribute(.paragraphStyle, at: loc,
+                                      effectiveRange: nil) as? NSParagraphStyle,
+           let copy = existing.mutableCopy() as? NSMutableParagraphStyle {
+            return copy
+        }
+        return defaultBodyParagraphStyle()
+    }
+
+    /// font が monospace か。inline code 検出用。
+    private static func isMonospace(_ f: NSFont) -> Bool {
+        if f.fontDescriptor.symbolicTraits.contains(.monoSpace) {
+            return true
+        }
+        // 一部の NSAttributedString(markdown:) 経由 font は symbolicTraits を
+        // 立てないので family 名でも判定する保険。
+        let family = (f.familyName ?? "").lowercased()
+        return family.contains("mono") || family.contains("courier")
     }
 
     /// `--at` 指定が画面端にめり込んだ場合に visibleFrame 内へ寄せる。
