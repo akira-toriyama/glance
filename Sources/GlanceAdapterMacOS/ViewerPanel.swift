@@ -92,8 +92,15 @@ public final class ViewerPanel {
     }
 
     /// panel を表示。`makeKey` せず order front するので元のアプリの
-    /// キーボードフォーカスは残ったまま。
-    public func present(autoCloseSeconds: Double?) {
+    /// キーボードフォーカスは残ったまま。`copy=true` なら表示内容を
+    /// pbcopy にも流す (翻訳結果を後で paste するフロー向け)。
+    public func present(autoCloseSeconds: Double?, copy: Bool = false,
+                        copyText: String = "") {
+        if copy && !copyText.isEmpty {
+            let pb = NSPasteboard.general
+            pb.clearContents()
+            pb.setString(copyText, forType: .string)
+        }
         panel.orderFrontRegardless()
 
         // panel 外クリックで close。global monitor は他アプリの click を見る。

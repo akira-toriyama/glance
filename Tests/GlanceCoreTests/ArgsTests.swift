@@ -59,6 +59,20 @@ final class ArgsTests: XCTestCase {
         XCTAssertTrue(a.markdown)
     }
 
+    func testCopyFlag() throws {
+        guard case .viewer(let a) = try parseArgs(["--copy"]) else {
+            return XCTFail("expected .viewer")
+        }
+        XCTAssertTrue(a.copy)
+    }
+
+    func testCopyDefaultsFalse() throws {
+        guard case .viewer(let a) = try parseArgs([]) else {
+            return XCTFail("expected .viewer")
+        }
+        XCTAssertFalse(a.copy)
+    }
+
     func testAutoCloseFlag() throws {
         guard case .viewer(let a) = try parseArgs(
             ["--auto-close", "3.5"]) else {

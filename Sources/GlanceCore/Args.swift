@@ -9,6 +9,7 @@ public struct Args: Equatable {
     public var autoCloseSeconds: Double?
     public var width: Double?
     public var height: Double?
+    public var copy: Bool
 
     public init(title: String = "",
                 atX: Double? = nil,
@@ -16,7 +17,8 @@ public struct Args: Equatable {
                 markdown: Bool = false,
                 autoCloseSeconds: Double? = nil,
                 width: Double? = nil,
-                height: Double? = nil) {
+                height: Double? = nil,
+                copy: Bool = false) {
         self.title = title
         self.atX = atX
         self.atY = atY
@@ -24,6 +26,7 @@ public struct Args: Equatable {
         self.autoCloseSeconds = autoCloseSeconds
         self.width = width
         self.height = height
+        self.copy = copy
     }
 }
 
@@ -72,6 +75,12 @@ public func parseArgs(_ argv: [String]) throws -> ArgsAction {
             i += 3
         case "--markdown":
             args.markdown = true
+            i += 1
+        case "--copy":
+            // 表示と同時に pbcopy するフラグ。翻訳結果を後で paste する
+            // ようなフローで使う。表示は副作用ではなく主役なので、
+            // panel を出した後に clipboard へ書き込む順。
+            args.copy = true
             i += 1
         case "--auto-close":
             guard i + 1 < argv.count else {

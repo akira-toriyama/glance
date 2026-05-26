@@ -43,7 +43,9 @@ enum GlanceApp {
         let app = NSApplication.shared
         app.setActivationPolicy(.accessory)
         let viewer = ViewerPanel(text: text, args: args)
-        viewer.present(autoCloseSeconds: args.autoCloseSeconds)
+        viewer.present(autoCloseSeconds: args.autoCloseSeconds,
+                       copy: args.copy,
+                       copyText: text)
         // viewer 内で dismiss されると NSApp.terminate が呼ばれてここから抜ける。
         app.run()
     }
@@ -81,6 +83,7 @@ enum GlanceApp {
           --at <x> <y>         anchor (Cocoa screen coords, Y-up); panel top-
                                left at this point. Default: screen center.
           --markdown           render stdin as Markdown (NSAttributedString)
+          --copy               also copy stdin to clipboard (pbcopy)
           --auto-close <s>     dismiss after N seconds
           --width <px>         panel width  (default 380)
           --height <px>        panel height (default 240)
