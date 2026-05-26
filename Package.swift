@@ -23,9 +23,21 @@ let package = Package(
         .executable(name: "glance", targets: ["GlanceApp"]),
         .library(name: "GlanceCore", targets: ["GlanceCore"]),
     ],
+    dependencies: [
+        // swift-markdown (Apache-2): CommonMark + GFM (tables / task lists /
+        // strikethrough)。NSAttributedString(markdown:) では届かない範囲を
+        // カバーするため。Apple 純正で軽量。
+        .package(url: "https://github.com/swiftlang/swift-markdown.git",
+                 from: "0.4.0"),
+    ],
     targets: [
         .target(name: "GlanceCore"),
-        .target(name: "GlanceAdapterMacOS", dependencies: ["GlanceCore"]),
+        .target(
+            name: "GlanceAdapterMacOS",
+            dependencies: [
+                "GlanceCore",
+                .product(name: "Markdown", package: "swift-markdown"),
+            ]),
         .executableTarget(
             name: "GlanceApp",
             dependencies: [
