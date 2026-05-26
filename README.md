@@ -44,11 +44,11 @@ dictionary lookup etc. live in the action shell (curl, jq, your scripts).
 
 ```mermaid
 flowchart LR
-    A[upstream pipeline<br/>e.g. curl ... | jq] -->|stdin| B[glance]
-    B --> C[parseArgs<br/>title / at / markdown / ...]
-    C --> D[NSPanel<br/>nonactivating + floating]
-    D --> E[NSTextView<br/>plain or markdown]
-    E --> F[user dismisses<br/>click outside / Esc / auto-close]
+    A["upstream pipeline<br/>(curl, jq, transform...)"] -->|stdin| B[glance]
+    B --> C["parseArgs<br/>title / at / markdown / copy / ..."]
+    C --> D["NSPanel<br/>nonactivating + floating"]
+    D --> E["NSTextView<br/>plain or markdown"]
+    E --> F["user dismisses<br/>click outside / Esc / auto-close"]
     F --> G[NSApp.terminate]
 ```
 

@@ -43,11 +43,11 @@ glance は意図的に薄い: stdin in, panel out。翻訳・AI 呼び出し・�
 
 ```mermaid
 flowchart LR
-    A[上流 pipeline<br/>例: curl ... | jq] -->|stdin| B[glance]
-    B --> C[parseArgs<br/>title / at / markdown / ...]
-    C --> D[NSPanel<br/>nonactivating + floating]
-    D --> E[NSTextView<br/>plain or markdown]
-    E --> F[user dismiss<br/>外クリック / Esc / auto-close]
+    A["上流 pipeline<br/>(curl, jq, transform...)"] -->|stdin| B[glance]
+    B --> C["parseArgs<br/>title / at / markdown / copy / ..."]
+    C --> D["NSPanel<br/>nonactivating + floating"]
+    D --> E["NSTextView<br/>plain or markdown"]
+    E --> F["user dismiss<br/>外クリック / Esc / auto-close"]
     F --> G[NSApp.terminate]
 ```
 
