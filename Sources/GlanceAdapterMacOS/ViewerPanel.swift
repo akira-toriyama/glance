@@ -16,6 +16,14 @@ public final class ViewerPanel {
     /// macOS 通知センターの 0.15s 前後に合わせる。
     private static let fadeDuration: TimeInterval = 0.14
 
+    /// 本文ベースフォントサイズ。glance は "ちらっと見る" 用途なので macOS の
+    /// 標準 body (13pt) より一回り大きめが読みやすい。markdown 経由の attributed
+    /// string は内部的に systemFontSize (~13pt) を基準に heading 等の階層を
+    /// 組むため、`markdownFontBumpPoints` で各 run の pointSize を底上げして
+    /// 階層を保ったまま全体を大きくする。
+    private static let baseFontSize: CGFloat = 16
+    private static let markdownFontBumpPoints: CGFloat = 3
+
     /// markdown=true は NSAttributedString(markdown:) で rich render。失敗時は
     /// plain text に fallback (例: parse エラー)。block-level (見出し / リスト /
     /// code block) も描画する `.full` を使う。
@@ -110,7 +118,7 @@ public final class ViewerPanel {
         textView.isSelectable = true
         textView.drawsBackground = false
         textView.textContainerInset = textInset
-        textView.font = .systemFont(ofSize: 14)
+        textView.font = .systemFont(ofSize: Self.baseFontSize)
         textView.textColor = .labelColor
         textView.usesFindBar = true
 
@@ -129,15 +137,27 @@ public final class ViewerPanel {
 
     /// markdown=true なら block-level も含めて attributed 化、失敗 / 非 markdown
     /// は plain text を attributed 化して返す。auto-size の高さ計算で使うため、
-    /// init の最序盤で 1 度だけ呼ぶ。
+    /// init の最序盤で 1 度だけ呼ぶ。markdown 側は heading 階層を保ったまま
+    /// pointSize を底上げする (デフォルトの 13pt body は glance 用途には小さい)。
     private static func renderAttributed(text: String,
                                          markdown: Bool) -> NSAttributedString {
-        let font = NSFont.systemFont(ofSize: 14)
+        let font = NSFont.systemFont(ofSize: baseFontSize)
         if markdown,
            let attr = try? NSAttributedString(
             markdown: text,
             options: .init(interpretedSyntax: .full)) {
-            return attr
+            let mutable = NSMutableAttributedString(attributedString: attr)
+            let full = NSRange(location: 0, length: mutable.length)
+            mutable.enumerateAttribute(.font, in: full) { value, range, _ in
+                let original = (value as? NSFont)
+                    ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
+                let bumped = NSFont(
+                    descriptor: original.fontDescriptor,
+                    size: original.pointSize + markdownFontBumpPoints)
+                    ?? original
+                mutable.addAttribute(.font, value: bumped, range: range)
+            }
+            return mutable
         }
         return NSAttributedString(
             string: text,
