@@ -53,5 +53,8 @@ let package = Package(
                 "GlanceAdapterMacOS",
             ]),
         .testTarget(name: "GlanceCoreTests", dependencies: ["GlanceCore"]),
+        .testTarget(
+            name: "GlanceAdapterMacOSTests",
+            dependencies: ["GlanceAdapterMacOS"]),
     ]
 )
