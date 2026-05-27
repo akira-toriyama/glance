@@ -38,6 +38,10 @@ jobs:
         id: cliff
         run: |
           NEXT=$(git cliff --bumped-version 2>/dev/null || echo "")
+          # git-cliff は cliff.toml `tag_pattern = "v[0-9]*"` の影響で
+          # 先頭に v が付くことがある。後段の `tag="v$NEXT"` と二重化する
+          # ので、ここで剥がして純粋な semver にする。
+          NEXT="${NEXT#v}"
           if [ -z "$NEXT" ] || [ "$NEXT" = "0.0.0" ]; then
             echo "no version bump from recent commits — nothing to release"
             echo "skip=true" >> "$GITHUB_OUTPUT"
