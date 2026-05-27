@@ -15,6 +15,19 @@ selection-driven pipelines.
 some-cmd | glance --title "Result" --at 800 500
 ```
 
+<!-- Screenshots
+Add panel screenshots to docs/img/ and reference them here, e.g.:
+
+![markdown demo](docs/img/markdown-demo.png)
+![hud toast](docs/img/hud-toast.png)
+
+(Capture: ./bin/glance --markdown ... and Cmd+Shift+4 + Space + click the panel.)
+-->
+
+> See also: [CONTRIBUTING.md](CONTRIBUTING.md) ·
+> [Pipeline cookbook](docs/pipeline.md) ·
+> [Commit convention](docs/commit-convention.md)
+
 ## Highlights
 
 - **Non-activating panel.** `.nonactivatingPanel` + `becomesKeyOnlyIfNeeded`
@@ -189,6 +202,15 @@ swift test                 # run XCTest suite (GlanceCoreTests)
   `git config core.hooksPath scripts/hooks`)
 - Release: `release.yml` → rolling draft. Publish in GitHub UI →
   `update-tap.yml` bumps tap formula automatically
+
+### `swift test` needs full Xcode
+
+If `swift test` fails locally with `no such module 'XCTest'`, you only
+have Command Line Tools. The XCTest framework ships with the full
+Xcode bundle. See
+[CONTRIBUTING.md → Tests need full Xcode](CONTRIBUTING.md#tests-need-full-xcode)
+for the one-time `xcode-select` switch. CI (macOS runner) always has
+Xcode, so PRs get the full test pass either way.
 
 ## License
 
