@@ -49,23 +49,18 @@ public struct MarkdownRenderer {
         self.style = style
     }
 
-    /// table header 用の薄い tint。vibrancy backdrop 上でセル区切りが見える
-    /// 程度に控えめにする。
-    fileprivate static let tableHeaderBackground = NSColor(name: nil) { app in
-        let dark = app.bestMatch(from: [.darkAqua, .vibrantDark]) != nil
-        return dark
-            ? NSColor(white: 1.0, alpha: 0.08)
-            : NSColor(white: 0.0, alpha: 0.05)
-    }
+    /// table header 用の bg。solid dark 前提で alpha 強め。
+    fileprivate static let tableHeaderBackground =
+        NSColor(white: 1.0, alpha: 0.15)
 
-    /// table の外周罫線。内部の separatorColor だと vibrancy 上で輪郭が
-    /// ぼやけるので、外側だけ少し濃く・太く独立指定。
-    fileprivate static let tableOuterBorderColor = NSColor(name: nil) { app in
-        let dark = app.bestMatch(from: [.darkAqua, .vibrantDark]) != nil
-        return dark
-            ? NSColor(white: 1.0, alpha: 0.28)
-            : NSColor(white: 0.0, alpha: 0.22)
-    }
+    /// table の外周罫線。内部の細い罫線とのコントラスト用に少し濃く。
+    fileprivate static let tableOuterBorderColor =
+        NSColor(white: 1.0, alpha: 0.28)
+
+    /// blockquote 左バー (GitHub の ▎ 風)。dark bg #1E1E1E 上で識別できる
+    /// 明るさ。あまり明るくすると主張しすぎるので #888 程度。
+    fileprivate static let blockquoteBarColor =
+        NSColor(white: 0.55, alpha: 1)
 
     /// Highlightr を 1 回だけ初期化して共有。JS context 起動が ~30-100ms
     /// 走るので lazy。code block を含む markdown が来た時点で 1 回温まる。
@@ -265,14 +260,47 @@ private struct Visitor: MarkupVisitor {
             startingRow: 0, rowSpan: 1,
             startingColumn: 0, columnSpan: 1)
         block.backgroundColor = style.codeBlockBackground
-        block.setWidth(10, type: .absoluteValueType, for: .padding)
+        block.setWidth(12, type: .absoluteValueType, for: .padding)
         block.setWidth(0,  type: .absoluteValueType, for: .border)
+        // 本文との対比で "ブロック" 感を出す左右の外側 margin。上下は
+        // paragraphSpacing が担うのでここは horizontal のみ。
+        block.setWidth(6, type: .absoluteValueType, for: .margin, edge: .minX)
+        block.setWidth(6, type: .absoluteValueType, for: .margin, edge: .maxX)
 
-        let p = NSMutableParagraphStyle()
-        p.lineSpacing = style.bodyLineSpacing
-        p.textBlocks = [block]
-        p.paragraphSpacing = style.codeBlockParagraphSpacing
-        p.paragraphSpacingBefore = style.codeBlockParagraphSpacing
+        // code paragraph style (本体)。
+        let codeP = NSMutableParagraphStyle()
+        // コードは body より行間を詰めた方がコードっぽく密に見える。
+        codeP.lineSpacing = 2
+        // 長い 1 行は word ではなく char 単位で wrap (code に word 境界の
+        // 概念が薄いので半端な空白で折り返さない)。
+        codeP.lineBreakMode = .byCharWrapping
+        codeP.textBlocks = [block]
+        codeP.paragraphSpacing = style.codeBlockParagraphSpacing
+        codeP.paragraphSpacingBefore = style.codeBlockParagraphSpacing
+
+        let result = NSMutableAttributedString()
+
+        // (B) 言語ラベル: cell 内最初の段落として右寄せの dim text で言語名を
+        // 表示 (VSCode の "右上 chip" の代替。同じ textBlock なので背景は
+        // 連続したまま)。
+        if let lang = codeBlock.language?.trimmingCharacters(in: .whitespaces),
+           !lang.isEmpty {
+            let labelP = NSMutableParagraphStyle()
+            labelP.alignment = .right
+            labelP.lineSpacing = 0
+            labelP.textBlocks = [block]
+            // code 本体の paragraphSpacingBefore が cell 内の縦余白を作るので
+            // label 側では追加しない。
+            let labelFont = NSFont.monospacedSystemFont(
+                ofSize: style.baseFontSize * 0.78, weight: .regular)
+            let labelAttr = NSAttributedString(string: lang + "\n",
+                                               attributes: [
+                .font: labelFont,
+                .foregroundColor: NSColor(white: 0.50, alpha: 1),
+                .paragraphStyle: labelP,
+            ])
+            result.append(labelAttr)
+        }
 
         // Highlightr で syntax highlight。fence 言語指定 (```swift 等) があれば
         // それを使い、無ければ auto-detect。highlighter が落ちた / 言語が未知の
@@ -280,34 +308,36 @@ private struct Visitor: MarkupVisitor {
         let highlighted = MarkdownRenderer.syntaxHighlighter
             .highlight(code, language: codeBlock.language)
 
-        let result: NSMutableAttributedString
+        let codeAttr: NSMutableAttributedString
         if let hl = highlighted {
-            result = NSMutableAttributedString(attributedString: hl)
-            let full = NSRange(location: 0, length: result.length)
+            codeAttr = NSMutableAttributedString(attributedString: hl)
+            let cr = NSRange(location: 0, length: codeAttr.length)
             // Highlightr が付けた `.backgroundColor` (theme の bg) は textBlock
             // の bg と二重になって汚いので消す。
-            result.removeAttribute(.backgroundColor, range: full)
+            codeAttr.removeAttribute(.backgroundColor, range: cr)
             // font を SF Mono / baseFontSize に統一しつつ bold / italic 等の
             // trait は維持。
-            result.enumerateAttribute(.font, in: full) { value, range, _ in
+            codeAttr.enumerateAttribute(.font, in: cr) { value, range, _ in
                 let original = (value as? NSFont) ?? monoFont
                 let traits = original.fontDescriptor.symbolicTraits
                 let base = monoFont.fontDescriptor.withSymbolicTraits(traits)
                 let font = NSFont(descriptor: base, size: style.baseFontSize)
                     ?? monoFont
-                result.addAttribute(.font, value: font, range: range)
+                codeAttr.addAttribute(.font, value: font, range: range)
             }
         } else {
-            result = NSMutableAttributedString(string: code, attributes: [
+            codeAttr = NSMutableAttributedString(string: code, attributes: [
                 .font: monoFont,
                 .foregroundColor: NSColor.labelColor,
             ])
         }
         // セル末は \n でパラグラフ終端 (textBlock の境界)。これが無いと
         // 後続 block と同じパラグラフになり、cell が閉じない。
-        result.append(NSAttributedString(string: "\n"))
-        let full = NSRange(location: 0, length: result.length)
-        result.addAttribute(.paragraphStyle, value: p, range: full)
+        codeAttr.append(NSAttributedString(string: "\n"))
+        let codeRange = NSRange(location: 0, length: codeAttr.length)
+        codeAttr.addAttribute(.paragraphStyle, value: codeP, range: codeRange)
+
+        result.append(codeAttr)
         return result
     }
 
@@ -330,17 +360,37 @@ private struct Visitor: MarkupVisitor {
                 inner.append(NSAttributedString(string: "\n", attributes: bodyAttrs()))
             }
         }
+
+        // GitHub 風の左バー: 1-cell NSTextTable で左 border だけ太く色付き、
+        // 他 edge は border 0。NSTextBlock 単体だと layout が崩れるので table
+        // で囲うのが安定。collapsesBorders=true だと 1-cell 時に border が
+        // 省略されることがあるので false にして確実に描く。
+        let table = NSTextTable()
+        table.numberOfColumns = 1
+        table.collapsesBorders = false
+        table.hidesEmptyCells = false
+
+        let block = NSTextTableBlock(
+            table: table,
+            startingRow: 0, rowSpan: 1,
+            startingColumn: 0, columnSpan: 1)
+        block.setWidth(0, type: .absoluteValueType, for: .border)
+        block.setWidth(4, type: .absoluteValueType, for: .border, edge: .minX)
+        block.setBorderColor(MarkdownRenderer.blockquoteBarColor, for: .minX)
+        // 左バーと本文の隙間 + 上下に呼吸。
+        block.setWidth(12, type: .absoluteValueType, for: .padding, edge: .minX)
+        block.setWidth(4,  type: .absoluteValueType, for: .padding, edge: .maxX)
+        block.setWidth(2,  type: .absoluteValueType, for: .padding, edge: .minY)
+        block.setWidth(2,  type: .absoluteValueType, for: .padding, edge: .maxY)
+
+        let p = NSMutableParagraphStyle()
+        p.lineSpacing = style.bodyLineSpacing
+        p.textBlocks = [block]
+
+        // セル末は \n でパラグラフ終端 (cell が閉じる)。
+        inner.append(NSAttributedString(string: "\n"))
         let r = NSRange(location: 0, length: inner.length)
-        // 全 paragraphStyle を indent 付きに差し替え (heading が入った場合も
-        // 階層を保ったまま indent を上塗り)。
-        inner.enumerateAttribute(.paragraphStyle, in: r) { value, range, _ in
-            let p = (value as? NSParagraphStyle).flatMap {
-                $0.mutableCopy() as? NSMutableParagraphStyle
-            } ?? bodyParagraph()
-            p.firstLineHeadIndent = style.blockquoteIndent
-            p.headIndent = style.blockquoteIndent
-            inner.addAttribute(.paragraphStyle, value: p, range: range)
-        }
+        inner.addAttribute(.paragraphStyle, value: p, range: r)
         inner.addAttribute(.foregroundColor,
                            value: NSColor.secondaryLabelColor, range: r)
         return inner
@@ -555,11 +605,13 @@ final class SyntaxHighlighter {
         _ = highlightr?.setTheme(to: "atom-one-dark")
     }
 
-    /// 言語 hint があれば指定、無ければ Highlightr の auto-detect。
-    /// 未知言語や lib 初期化失敗時は nil → caller は plain mono に fallback。
+    /// 言語 hint があれば指定で highlight。無ければ何もせず nil (auto-detect
+    /// は意図しない highlight を生むので切る)。caller は nil 時 plain mono に
+    /// fallback する。
     func highlight(_ code: String, language: String?) -> NSAttributedString? {
         let lang = (language ?? "").trimmingCharacters(in: .whitespaces)
-        let normalised = lang.isEmpty ? nil : lang.lowercased()
-        return highlightr?.highlight(code, as: normalised, fastRender: true)
+        guard !lang.isEmpty else { return nil }
+        return highlightr?.highlight(code, as: lang.lowercased(),
+                                     fastRender: true)
     }
 }

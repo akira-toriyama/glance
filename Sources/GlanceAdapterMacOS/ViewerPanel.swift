@@ -29,24 +29,13 @@ public final class ViewerPanel {
     private static let codeBlockParagraphSpacing: CGFloat = 6
     private static let blockquoteIndent: CGFloat = 16
 
-    /// vibrancy backdrop の上に乗せても見える程度の薄い tint。Light/Dark を
-    /// dynamicProvider で切り替える (NSColor 系の semantic だと vibrancy 上で
-    /// 見えづらいので独自値)。
-    private static let inlineCodeBackground = NSColor(name: nil) { app in
-        let dark = app.bestMatch(from: [.darkAqua, .vibrantDark]) != nil
-        return dark
-            ? NSColor(white: 1.0, alpha: 0.10)
-            : NSColor(white: 0.0, alpha: 0.07)
-    }
-
-    private static let codeBlockBackground = NSColor(name: nil) { app in
-        let dark = app.bestMatch(from: [.darkAqua, .vibrantDark]) != nil
-        // inline code (0.10/0.07) よりほんの少し濃く。多行の "ブロック" として
-        // identify しやすい強さに。あまり濃くすると文字が読みにくくなる。
-        return dark
-            ? NSColor(white: 1.0, alpha: 0.14)
-            : NSColor(white: 0.0, alpha: 0.09)
-    }
+    /// solid #1E1E1E 背景の上でちゃんと見える濃さ。darkAqua 強制なので
+    /// dynamicProvider は不要 (light variant 値は使われない)。
+    /// alpha は panel bg #1E1E1E (white 0.118) との混色結果で決めている。
+    private static let inlineCodeBackground =
+        NSColor(white: 1.0, alpha: 0.22)
+    private static let codeBlockBackground =
+        NSColor(white: 1.0, alpha: 0.18)
 
     /// markdown=true は NSAttributedString(markdown:) で rich render。失敗時は
     /// plain text に fallback (例: parse エラー)。block-level (見出し / リスト /
@@ -98,14 +87,18 @@ public final class ViewerPanel {
             return Self.clampToScreen(baseRect)
         }()
 
+        // titleBar は独立した opaque strip にする (`.fullSizeContentView` を
+        // 外す)。これが付いていると content が titleBar 下に潜り込んでスクロ
+        // ール時に隠れて読めなくなる。darkAqua の標準 titleBar は本文 bg
+        // #1E1E1E に近い色で違和感無し。
         panel = NSPanel(
             contentRect: frame,
             styleMask: [.nonactivatingPanel, .titled, .closable,
-                        .resizable, .fullSizeContentView],
+                        .resizable],
             backing: .buffered,
             defer: false)
         panel.title = args.title
-        panel.titlebarAppearsTransparent = true
+        panel.titlebarAppearsTransparent = false
         panel.isFloatingPanel = true
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = true
@@ -114,29 +107,49 @@ public final class ViewerPanel {
                                     .fullScreenAuxiliary,
                                     .transient]
         panel.isMovableByWindowBackground = true
-        // panel 自体は透明にして、後ろの NSVisualEffectView が見えるようにする。
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
+        // VSCode / Xcode の dark theme と同じ硬めの dark gray 背景。動的色
+        // (windowBackgroundColor 等) は init 時の現在 appearance で固まって
+        // panel 側 darkAqua と食い違うバグになるので、ここではハードコード
+        // RGB で確定値を入れる (forcing dark に振った以上、appearance 連動の
+        // 動的色を引き回す必要は無い)。
+        // bg: #1E1E1E (VSCode Dark+ の editor.background)
+        // text: NSColor.labelColor を appearance 経由で白寄りに
+        panel.appearance = NSAppearance(named: .darkAqua)
+        panel.isOpaque = true
+        panel.backgroundColor = NSColor(white: 0.118, alpha: 1)  // #1E1E1E
         panel.hasShadow = true
         panel.alphaValue = 0  // fade-in 用 (present で 1 へ補間)
 
-        // root: NSVisualEffectView (HUD / popover material) でフォーカスを奪わ
-        // ない overlay 感を出す。Spotlight / 通知センターと同じ磨りガラス。
-        let blur = NSVisualEffectView(frame: NSRect(origin: .zero,
-                                                    size: frame.size))
-        blur.autoresizingMask = [.width, .height]
-        blur.blendingMode = .behindWindow
-        blur.material = .hudWindow
-        blur.state = .active
+        // root: VSCode Dark+ と同じ #1E1E1E をハードコード。layer bg は
+        // appearance に動的追従しないので、ここに windowBackgroundColor を
+        // 入れると現在の app appearance (起動時は light な事が多い) が
+        // 焼き付いて、panel の darkAqua 強制と矛盾して文字が読めなくなる。
+        let root = NSView(frame: NSRect(origin: .zero, size: frame.size))
+        root.autoresizingMask = [.width, .height]
+        root.wantsLayer = true
+        root.layer?.backgroundColor = NSColor(white: 0.118, alpha: 1).cgColor
 
-        // contentView: scrollable NSTextView。背景は透明にして blur を透かす。
+        // contentView: scrollable NSTextView。背景は透明にして root の dark を
+        // 透かす (root が固定 dark なので結果として常に VSCode-like dark bg)。
         let scroll = NSScrollView(frame: NSRect(origin: .zero, size: frame.size))
         scroll.hasVerticalScroller = true
         scroll.borderType = .noBorder
         scroll.drawsBackground = false
         scroll.autoresizingMask = [.width, .height]
 
-        let textView = NSTextView(frame: scroll.bounds)
+        // TextKit 1 を明示構築: GlanceLayoutManager (inline code pill 描画用)
+        // を挟むため。`NSTextView(frame:)` だと内部 storage / layout を勝手に
+        // 作るので、自前で stack を組んで textContainer 経由で渡す。NSTextTable
+        // も TextKit 1 で動くので code block / table はそのまま機能する。
+        let textStorage = NSTextStorage()
+        let layoutManager = GlanceLayoutManager()
+        textStorage.addLayoutManager(layoutManager)
+        let textContainer = NSTextContainer(size: scroll.bounds.size)
+        textContainer.widthTracksTextView = true
+        layoutManager.addTextContainer(textContainer)
+
+        let textView = NSTextView(frame: scroll.bounds,
+                                  textContainer: textContainer)
         textView.autoresizingMask = [.width]
         textView.isEditable = false
         textView.isSelectable = true
@@ -152,8 +165,9 @@ public final class ViewerPanel {
         // 触らない。
 
         scroll.documentView = textView
-        blur.addSubview(scroll)
-        panel.contentView = blur
+        // 階層: panel.contentView = root (solid dark) → scroll → textView。
+        root.addSubview(scroll)
+        panel.contentView = root
     }
 
     /// markdown=true は swift-markdown でパースして MarkdownRenderer に投げる。
