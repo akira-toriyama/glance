@@ -119,7 +119,10 @@ glance --help                 print help, exit
   `git config core.hooksPath scripts/hooks`
 - **PR**: タイトルも同じ形式 (`commit-lint.yml` がチェック)。
 - **コメント**: WHY を書く。WHAT は識別子で語る。多段の docstring は禁止。
-- **依存**: 追加依存ゼロを死守 (`swift` toolchain のみ)。
+- **依存**: SwiftPM 経由で追加可。ライセンスは MIT / Apache-2 互換に
+  限る。`Package.swift` への追加は PR description で根拠を書く
+  (e.g. "swift-markdown: GFM tables / task lists / strikethrough のため")。
+  build time と binary size への影響を意識する。
 
 ## CI (.github/workflows)
 

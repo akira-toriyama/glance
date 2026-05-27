@@ -18,8 +18,22 @@ some-cmd | glance --title "Result" --at 800 500
 
 - **Non-activating panel**。`.nonactivatingPanel` + `becomesKeyOnlyIfNeeded`
   でフォーカスを奪わない (PopClip 風)
-- **Markdown レンダリング** (`--markdown`, `NSAttributedString(markdown:)` 経由)
-- **アンカー + サイズ指定** (`--at <x> <y>` は Cocoa 座標, `--width` / `--height`)
+- **VSCode 風 solid dark theme** (`#1E1E1E`、`darkAqua` 強制) で
+  視認性を担保
+- **GFM 完全対応の Markdown** (`--markdown`): 見出し / bold / italic /
+  inline & block code / blockquote (左バー) / list / **table** /
+  **task list** (`- [x]`) / **strikethrough** / link を
+  [swift-markdown](https://github.com/swiftlang/swift-markdown) で描画
+- **シンタックスハイライト** (code block)
+  [Highlightr](https://github.com/raspu/Highlightr)
+  (highlight.js + JavaScriptCore) 経由。fence 言語指定
+  (` ```swift ` 等) で言語を渡し、指定無しは plain mono のまま
+- **VSCode 風の言語ラベル** が code block 右上に表示
+- **アンカー + サイズ指定** (`--at <x> <y>` は Cocoa 座標,
+  `--width` / `--height`)。アンカーは `visibleFrame` 内に自動クランプ
+- **自動高さ** (`--height` 省略時、80–600pt の範囲で content fit)
+- **フェード in/out** (~0.14s、macOS notification と同等)
+- **同時 pbcopy** (`--copy` で表示と同時に clipboard へコピー)
 - **自動 close** (`--auto-close <秒>`)
 - **ネットワーク呼び出しなし**。stdin だけ読む。HTTP は pipeline 上流の責務
 - **Accessibility 権限不要**。AppKit + stdin のみ
@@ -80,11 +94,12 @@ some-cmd | glance [flags]
 
   --title <s>           ウィンドウタイトル
   --at <x> <y>          アンカー (Cocoa 座標, Y-up)。panel 左上端 = この座標。
-                        指定無しなら画面中央。
-  --markdown            stdin を Markdown としてレンダリング
+                        指定無しなら画面中央。visibleFrame 内へ自動クランプ。
+  --markdown            stdin を Markdown としてレンダリング (CommonMark + GFM)
+  --copy                stdin を同時に pbcopy する
   --auto-close <秒>     N 秒後に自動 close
   --width <px>          panel 幅 (デフォルト 380)
-  --height <px>         panel 高さ (デフォルト 240)
+  --height <px>         panel 高さ (省略時: content 自動 fit、80–600pt クランプ)
   --version / -V        バージョン表示して exit
   --help / -h           ヘルプ表示して exit
 
@@ -121,7 +136,7 @@ date | glance --auto-close 4 --title 'Now'
 panel は次のいずれかで消える:
 
 - panel 外をクリック (global mouse monitor)
-- **Esc** キー (panel が transient に key になった時)
+- **Esc** または **⌘W** (panel が transient に key になった時)
 - 標準の close ボタン (赤丸) クリック
 - `--auto-close N` のタイマー満了
 
@@ -131,9 +146,15 @@ panel は次のいずれかで消える:
   pipe。空 stdin は意図的に no-op (静かに exit 0)。
 - **フォーカスを奪う**: 設計上起きないはず (`.nonactivatingPanel`)。起きたら
   再現手順付きで bug report。
-- **Markdown のレンダリングが変**: `NSAttributedString(markdown:)` は inline
-  syntax preserving whitespace 対応。ブロックレベル (#, ``` , >) は簡略化。
-  リッチな出力が欲しい場合は上流で HTML / plain text に整形して pipe。
+- **Markdown が plain になる (highlight されない)**: fence に言語指定が
+  無い (` ``` ` 直後が swift / python 等になっていない) と意図的に
+  plain mono のまま。auto-detect は意図しない highlight を避けるため
+  切ってある → 言語指定をつけて opt-in。
+- **長い code 行の wrap がおかしい**: code block は word ではなく char
+  境界で wrap する仕様 (code に word 境界の概念が薄いため)。改行
+  したくなければ上流で整形を。
+- **Highlightr の初回が遅い**: JavaScriptCore の起動が初回 ~30–100ms
+  かかる。同一プロセス内の 2 回目以降は instant。
 
 ## 開発
 
@@ -148,9 +169,14 @@ swift test                 # XCTest 実行 (GlanceCoreTests)
 ```
 
 - SwiftPM プロジェクト。ヘキサゴナル 3 層:
-  `Sources/GlanceCore` (純粋ロジック) /
-  `Sources/GlanceAdapterMacOS` (AppKit) /
+  `Sources/GlanceCore` (純粋ロジック、Foundation のみ) /
+  `Sources/GlanceAdapterMacOS` (AppKit + markdown / syntax highlight) /
   `Sources/GlanceApp` (CLI + @main)
+- 依存 (SwiftPM、MIT / Apache-2 互換のみ):
+  - [swift-markdown](https://github.com/swiftlang/swift-markdown)
+    (Apache-2) — CommonMark + GFM パーサ
+  - [Highlightr](https://github.com/raspu/Highlightr)
+    (MIT) — highlight.js + JavaScriptCore wrapper
 - 推奨コミット規約: gitmoji + Conventional Commits (`scripts/hooks/commit-msg`
   で検証。有効化: `git config core.hooksPath scripts/hooks`)
 - リリース: `release.yml` が rolling draft を生成。GitHub UI で Publish →
