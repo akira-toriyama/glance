@@ -148,38 +148,8 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertEqual(style, NSUnderlineStyle.single.rawValue)
     }
 
-    // MARK: heading hierarchy (h1/h2 underline)
-
-    func testH1HasUnderline() {
-        let out = render("# H1")
-        let nsString = out.string as NSString
-        let r = nsString.range(of: "H1")
-        let style = out.attribute(.underlineStyle,
-                                  at: r.location, effectiveRange: nil) as? Int
-        XCTAssertEqual(style, NSUnderlineStyle.single.rawValue,
-                       "h1 should have GitHub-style underline")
-    }
-
-    func testH2HasUnderline() {
-        let out = render("## H2")
-        let nsString = out.string as NSString
-        let r = nsString.range(of: "H2")
-        let style = out.attribute(.underlineStyle,
-                                  at: r.location, effectiveRange: nil) as? Int
-        XCTAssertEqual(style, NSUnderlineStyle.single.rawValue,
-                       "h2 should have GitHub-style underline")
-    }
-
-    func testH3HasNoUnderline() {
-        let out = render("### H3")
-        let nsString = out.string as NSString
-        let r = nsString.range(of: "H3")
-        let style = out.attribute(.underlineStyle,
-                                  at: r.location, effectiveRange: nil) as? Int?
-        // h3 以下は線を付けない設計。
-        XCTAssertNil(style ?? nil,
-                     "h3 should NOT have underline (only h1/h2 do)")
-    }
+    // MARK: heading hierarchy
+    // (h1/h2 underline tests live with the feature in PR #2 / more-flags.)
 
     func testHeadingLevelDrivesFontSize() {
         // h1 のフォントサイズは h3 より大きいはず。具体値は scales 配列に
