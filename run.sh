@@ -15,6 +15,9 @@ case "${1:-}" in
         # GFM + syntax highlight + table + blockquote + task list を
         # ひとまとめに、glance の今の能力が一画面で確認できる demo。
         # auto-close を入れないので user が明示的に dismiss するまで残る。
+        # NOTE: 単引用符内の \(name) 等は意図的に shell expansion させない
+        # markdown 内の文字列なので SC2016 を disable。
+        # shellcheck disable=SC2016
         printf '%s' '# glance demo
 
 `some-cmd` の結果を non-activating panel に表示します。**focus** は
