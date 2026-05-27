@@ -29,6 +29,13 @@ let package = Package(
         // カバーするため。Apple 純正で軽量。
         .package(url: "https://github.com/swiftlang/swift-markdown.git",
                  from: "0.4.0"),
+        // Highlightr (MIT): highlight.js を JavaScriptCore で動かす syntax
+        // highlighter。glance は claude-cli 出力等で多言語のコードを表示する
+        // 可能性が高いので、Swift only な Splash より highlight.js の広い
+        // 言語サポートを取る。JavaScriptCore は macOS 標準同梱なので追加
+        // binary size はテーマ CSS + JS 程度。
+        .package(url: "https://github.com/raspu/Highlightr.git",
+                 from: "2.3.0"),
     ],
     targets: [
         .target(name: "GlanceCore"),
@@ -37,6 +44,7 @@ let package = Package(
             dependencies: [
                 "GlanceCore",
                 .product(name: "Markdown", package: "swift-markdown"),
+                .product(name: "Highlightr", package: "Highlightr"),
             ]),
         .executableTarget(
             name: "GlanceApp",

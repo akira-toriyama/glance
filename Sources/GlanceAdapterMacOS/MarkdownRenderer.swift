@@ -1,4 +1,5 @@
 import AppKit
+import Highlightr
 import Markdown
 
 /// swift-markdown の AST を AppKit の `NSAttributedString` に落とす renderer。
@@ -65,6 +66,13 @@ public struct MarkdownRenderer {
             ? NSColor(white: 1.0, alpha: 0.28)
             : NSColor(white: 0.0, alpha: 0.22)
     }
+
+    /// Highlightr を 1 回だけ初期化して共有。JS context 起動が ~30-100ms
+    /// 走るので lazy。code block を含む markdown が来た時点で 1 回温まる。
+    /// glance は単一スレッド UI で、render() は ViewerPanel.init (main) から
+    /// しか呼ばれない。Highlightr 自体は Sendable でないが、アクセスが
+    /// 1 つの isolation domain に閉じているので nonisolated(unsafe) で安全。
+    nonisolated(unsafe) fileprivate static let syntaxHighlighter = SyntaxHighlighter()
 
     public func render(_ text: String) -> NSAttributedString {
         let document = Document(parsing: text)
@@ -241,19 +249,66 @@ private struct Visitor: MarkupVisitor {
         var code = codeBlock.code
         if code.hasSuffix("\n") { code.removeLast() }
 
+        // 背景は 1 セルだけの NSTextTable で囲って段落矩形を描く。
+        //   - `.backgroundColor` attr → 文字の後ろにしか描かれず、行間 gap で
+        //      "行ごとの pill" に千切れる
+        //   - 裸の NSTextBlock → width 未設定で 1 文字幅に折りたたまれる
+        // GFM table で動いている仕組みをそのまま流用する。
+        let table = NSTextTable()
+        table.numberOfColumns = 1
+        table.layoutAlgorithm = .automaticLayoutAlgorithm
+        table.collapsesBorders = true
+        table.hidesEmptyCells = false
+
+        let block = NSTextTableBlock(
+            table: table,
+            startingRow: 0, rowSpan: 1,
+            startingColumn: 0, columnSpan: 1)
+        block.backgroundColor = style.codeBlockBackground
+        block.setWidth(10, type: .absoluteValueType, for: .padding)
+        block.setWidth(0,  type: .absoluteValueType, for: .border)
+
         let p = NSMutableParagraphStyle()
         p.lineSpacing = style.bodyLineSpacing
-        p.firstLineHeadIndent = style.codeBlockIndent
-        p.headIndent = style.codeBlockIndent
+        p.textBlocks = [block]
         p.paragraphSpacing = style.codeBlockParagraphSpacing
         p.paragraphSpacingBefore = style.codeBlockParagraphSpacing
 
-        return NSAttributedString(string: code, attributes: [
-            .font: monoFont,
-            .foregroundColor: NSColor.labelColor,
-            .backgroundColor: style.codeBlockBackground,
-            .paragraphStyle: p,
-        ])
+        // Highlightr で syntax highlight。fence 言語指定 (```swift 等) があれば
+        // それを使い、無ければ auto-detect。highlighter が落ちた / 言語が未知の
+        // 場合は plain mono に fallback。
+        let highlighted = MarkdownRenderer.syntaxHighlighter
+            .highlight(code, language: codeBlock.language)
+
+        let result: NSMutableAttributedString
+        if let hl = highlighted {
+            result = NSMutableAttributedString(attributedString: hl)
+            let full = NSRange(location: 0, length: result.length)
+            // Highlightr が付けた `.backgroundColor` (theme の bg) は textBlock
+            // の bg と二重になって汚いので消す。
+            result.removeAttribute(.backgroundColor, range: full)
+            // font を SF Mono / baseFontSize に統一しつつ bold / italic 等の
+            // trait は維持。
+            result.enumerateAttribute(.font, in: full) { value, range, _ in
+                let original = (value as? NSFont) ?? monoFont
+                let traits = original.fontDescriptor.symbolicTraits
+                let base = monoFont.fontDescriptor.withSymbolicTraits(traits)
+                let font = NSFont(descriptor: base, size: style.baseFontSize)
+                    ?? monoFont
+                result.addAttribute(.font, value: font, range: range)
+            }
+        } else {
+            result = NSMutableAttributedString(string: code, attributes: [
+                .font: monoFont,
+                .foregroundColor: NSColor.labelColor,
+            ])
+        }
+        // セル末は \n でパラグラフ終端 (textBlock の境界)。これが無いと
+        // 後続 block と同じパラグラフになり、cell が閉じない。
+        result.append(NSAttributedString(string: "\n"))
+        let full = NSRange(location: 0, length: result.length)
+        result.addAttribute(.paragraphStyle, value: p, range: full)
+        return result
     }
 
     mutating func visitHTMLBlock(_ html: HTMLBlock) -> NSAttributedString {
@@ -483,5 +538,28 @@ private struct Visitor: MarkupVisitor {
             let traited = NSFontManager.shared.convert(original, toHaveTrait: trait)
             s.addAttribute(.font, value: traited, range: range)
         }
+    }
+}
+
+// MARK: - SyntaxHighlighter
+
+/// Highlightr (highlight.js + JavaScriptCore) を 1 instance だけ抱える
+/// 薄い wrapper。glance の panel は `.hudWindow` material 固定で常に暗色
+/// なので theme は `atom-one-dark` をハードコード。MarkupVisitor の要件が
+/// 非 isolated なので、これも非 isolated にしておく。
+final class SyntaxHighlighter {
+    private let highlightr: Highlightr?
+
+    init() {
+        self.highlightr = Highlightr()
+        _ = highlightr?.setTheme(to: "atom-one-dark")
+    }
+
+    /// 言語 hint があれば指定、無ければ Highlightr の auto-detect。
+    /// 未知言語や lib 初期化失敗時は nil → caller は plain mono に fallback。
+    func highlight(_ code: String, language: String?) -> NSAttributedString? {
+        let lang = (language ?? "").trimmingCharacters(in: .whitespaces)
+        let normalised = lang.isEmpty ? nil : lang.lowercased()
+        return highlightr?.highlight(code, as: normalised, fastRender: true)
     }
 }
