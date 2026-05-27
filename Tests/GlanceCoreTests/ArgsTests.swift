@@ -73,6 +73,73 @@ final class ArgsTests: XCTestCase {
         XCTAssertFalse(a.copy)
     }
 
+    // MARK: --font-size / --theme / --no-highlight / --hud
+
+    func testFontSizeFlag() throws {
+        guard case .viewer(let a) = try parseArgs(
+            ["--font-size", "18"]) else {
+            return XCTFail("expected .viewer")
+        }
+        XCTAssertEqual(a.fontSize, 18)
+    }
+
+    func testFontSizeDefaultsNil() throws {
+        guard case .viewer(let a) = try parseArgs([]) else {
+            return XCTFail("expected .viewer")
+        }
+        XCTAssertNil(a.fontSize)
+    }
+
+    func testFontSizeInvalid() {
+        XCTAssertThrowsError(try parseArgs(["--font-size", "huge"])) { error in
+            XCTAssertEqual(error as? ArgsParseError,
+                           .invalidNumber("--font-size", "huge"))
+        }
+    }
+
+    func testThemeFlag() throws {
+        guard case .viewer(let a) = try parseArgs(
+            ["--theme", "monokai-sublime"]) else {
+            return XCTFail("expected .viewer")
+        }
+        XCTAssertEqual(a.theme, "monokai-sublime")
+    }
+
+    func testThemeMissingValue() {
+        XCTAssertThrowsError(try parseArgs(["--theme"])) { error in
+            XCTAssertEqual(error as? ArgsParseError,
+                           .missingValue("--theme"))
+        }
+    }
+
+    func testNoHighlightFlag() throws {
+        guard case .viewer(let a) = try parseArgs(["--no-highlight"]) else {
+            return XCTFail("expected .viewer")
+        }
+        XCTAssertTrue(a.noHighlight)
+    }
+
+    func testNoHighlightDefaultsFalse() throws {
+        guard case .viewer(let a) = try parseArgs([]) else {
+            return XCTFail("expected .viewer")
+        }
+        XCTAssertFalse(a.noHighlight)
+    }
+
+    func testHudFlag() throws {
+        guard case .viewer(let a) = try parseArgs(["--hud"]) else {
+            return XCTFail("expected .viewer")
+        }
+        XCTAssertTrue(a.hud)
+    }
+
+    func testHudDefaultsFalse() throws {
+        guard case .viewer(let a) = try parseArgs([]) else {
+            return XCTFail("expected .viewer")
+        }
+        XCTAssertFalse(a.hud)
+    }
+
     func testAutoCloseFlag() throws {
         guard case .viewer(let a) = try parseArgs(
             ["--auto-close", "3.5"]) else {

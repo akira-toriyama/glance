@@ -86,7 +86,17 @@ enum GlanceApp {
           --copy               also copy stdin to clipboard (pbcopy)
           --auto-close <s>     dismiss after N seconds
           --width <px>         panel width  (default 380)
-          --height <px>        panel height (default 240)
+          --height <px>        panel height (default: auto-size,
+                               clamped 80–600pt)
+          --font-size <pt>     body font size (default 16; markdown
+                               headings scale relative to this)
+          --theme <name>       Highlightr theme for code blocks (default
+                               atom-one-dark). Try: nord, monokai-sublime,
+                               vs2015, github-dark, etc.
+          --no-highlight       skip syntax highlighting entirely (faster
+                               start, no JSCore boot)
+          --hud                borderless rounded-corner mode for short
+                               toast-style display (no title bar)
           --version / -V       print version, exit
           --help / -h          print this help, exit
 

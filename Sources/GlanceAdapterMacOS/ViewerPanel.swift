@@ -16,10 +16,11 @@ public final class ViewerPanel {
     /// macOS 通知センターの 0.15s 前後に合わせる。
     private static let fadeDuration: TimeInterval = 0.14
 
-    /// 本文ベースフォントサイズ。glance は "ちらっと見る" 用途なので macOS の
-    /// 標準 body (13pt) より一回り大きめが読みやすい。MarkdownRenderer.Style
-    /// の baseFontSize として渡し、見出し階層はそこから倍率で派生する。
-    private static let baseFontSize: CGFloat = 16
+    /// 本文ベースフォントサイズの既定値。`--font-size` 指定時はそちらが勝つ。
+    /// 16pt は macOS 標準 body (13pt) より一回り大きく "ちらっと見る" 用途に
+    /// 適した値。MarkdownRenderer.Style.baseFontSize として渡され、見出し階層は
+    /// そこから倍率で派生する。
+    private static let defaultBaseFontSize: CGFloat = 16
 
     /// 行間 / 余白 / block-level 装飾の constants。MacDown GitHub2.css 等の
     /// 値を踏襲しつつ、native NSAttributedString に翻訳したもの。
@@ -37,10 +38,19 @@ public final class ViewerPanel {
     private static let codeBlockBackground =
         NSColor(white: 1.0, alpha: 0.18)
 
-    /// markdown=true は NSAttributedString(markdown:) で rich render。失敗時は
-    /// plain text に fallback (例: parse エラー)。block-level (見出し / リスト /
-    /// code block) も描画する `.full` を使う。
+    /// HUD モードの角丸半径。macOS の通知バナーと同程度。
+    private static let hudCornerRadius: CGFloat = 10
+
     public init(text: String, args: Args) {
+        // CLI から syntax highlighter を構成。`--no-highlight` 時は Highlightr
+        // 自体を起動しない (JSCore 起動 ~30-100ms を skip)。
+        MarkdownRenderer.configureSyntaxHighlighter(
+            theme: args.theme, enabled: !args.noHighlight)
+
+        let fontSize = args.fontSize.map { CGFloat($0) }
+            ?? Self.defaultBaseFontSize
+        let isHud = args.hud
+
         let defaultWidth: CGFloat = 380
         let w = args.width.map { CGFloat($0) } ?? defaultWidth
         let requestedH = args.height.map { CGFloat($0) }
@@ -48,7 +58,8 @@ public final class ViewerPanel {
         // contentView を組み立ててから text の自然高さで panel 高さを決める。
         // ユーザが --height で明示した場合はそれを尊重 (clamp なし)。
         let textInset = Self.bodyTextInset
-        let attributed = Self.renderAttributed(text: text, markdown: args.markdown)
+        let attributed = Self.renderAttributed(
+            text: text, markdown: args.markdown, fontSize: fontSize)
 
         let contentWidth = w
         let textWidth = contentWidth - textInset.width * 2
@@ -57,11 +68,12 @@ public final class ViewerPanel {
                          height: .greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin, .usesFontLeading]
         ).height
-        let titleBarSlack: CGFloat = 28  // titled chrome 分の概算
+        // HUD は title bar が無いので slack を引かない。
+        let titleBarSlack: CGFloat = isHud ? 0 : 28
         let naturalPanelHeight = ceil(naturalTextHeight)
             + textInset.height * 2
             + titleBarSlack
-        let minH: CGFloat = 80
+        let minH: CGFloat = isHud ? 40 : 80
         let maxH: CGFloat = 600
         let autoH = min(max(naturalPanelHeight, minH), maxH)
         let h = requestedH ?? autoH
@@ -87,18 +99,19 @@ public final class ViewerPanel {
             return Self.clampToScreen(baseRect)
         }()
 
-        // titleBar は独立した opaque strip にする (`.fullSizeContentView` を
-        // 外す)。これが付いていると content が titleBar 下に潜り込んでスクロ
-        // ール時に隠れて読めなくなる。darkAqua の標準 titleBar は本文 bg
-        // #1E1E1E に近い色で違和感無し。
+        let styleMask: NSWindow.StyleMask = isHud
+            ? [.nonactivatingPanel, .borderless]
+            : [.nonactivatingPanel, .titled, .closable, .resizable]
+
         panel = NSPanel(
             contentRect: frame,
-            styleMask: [.nonactivatingPanel, .titled, .closable,
-                        .resizable],
+            styleMask: styleMask,
             backing: .buffered,
             defer: false)
-        panel.title = args.title
-        panel.titlebarAppearsTransparent = false
+        if !isHud {
+            panel.title = args.title
+            panel.titlebarAppearsTransparent = false
+        }
         panel.isFloatingPanel = true
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = true
@@ -107,27 +120,31 @@ public final class ViewerPanel {
                                     .fullScreenAuxiliary,
                                     .transient]
         panel.isMovableByWindowBackground = true
-        // VSCode / Xcode の dark theme と同じ硬めの dark gray 背景。動的色
-        // (windowBackgroundColor 等) は init 時の現在 appearance で固まって
-        // panel 側 darkAqua と食い違うバグになるので、ここではハードコード
-        // RGB で確定値を入れる (forcing dark に振った以上、appearance 連動の
-        // 動的色を引き回す必要は無い)。
-        // bg: #1E1E1E (VSCode Dark+ の editor.background)
-        // text: NSColor.labelColor を appearance 経由で白寄りに
+        // VSCode / Xcode の dark theme と同じ硬めの dark gray 背景。
+        // HUD モードは panel 自体は透明にして root の rounded layer で
+        // 角丸付き dark を表示する。それ以外は panel が直接 #1E1E1E。
         panel.appearance = NSAppearance(named: .darkAqua)
-        panel.isOpaque = true
-        panel.backgroundColor = NSColor(white: 0.118, alpha: 1)  // #1E1E1E
+        if isHud {
+            panel.isOpaque = false
+            panel.backgroundColor = .clear
+        } else {
+            panel.isOpaque = true
+            panel.backgroundColor = NSColor(white: 0.118, alpha: 1)
+        }
         panel.hasShadow = true
         panel.alphaValue = 0  // fade-in 用 (present で 1 へ補間)
 
-        // root: VSCode Dark+ と同じ #1E1E1E をハードコード。layer bg は
-        // appearance に動的追従しないので、ここに windowBackgroundColor を
-        // 入れると現在の app appearance (起動時は light な事が多い) が
-        // 焼き付いて、panel の darkAqua 強制と矛盾して文字が読めなくなる。
+        // root: ハードコード dark RGB。layer bg は appearance に動的追従しない
+        // ので windowBackgroundColor を入れると現在の app appearance (起動時は
+        // light な事が多い) が焼き付いて panel の darkAqua 強制と矛盾する。
         let root = NSView(frame: NSRect(origin: .zero, size: frame.size))
         root.autoresizingMask = [.width, .height]
         root.wantsLayer = true
         root.layer?.backgroundColor = NSColor(white: 0.118, alpha: 1).cgColor
+        if isHud {
+            root.layer?.cornerRadius = Self.hudCornerRadius
+            root.layer?.masksToBounds = true
+        }
 
         // contentView: scrollable NSTextView。背景は透明にして root の dark を
         // 透かす (root が固定 dark なので結果として常に VSCode-like dark bg)。
@@ -155,7 +172,7 @@ public final class ViewerPanel {
         textView.isSelectable = true
         textView.drawsBackground = false
         textView.textContainerInset = textInset
-        textView.font = .systemFont(ofSize: Self.baseFontSize)
+        textView.font = .systemFont(ofSize: fontSize)
         textView.textColor = .labelColor
         textView.usesFindBar = true
 
@@ -165,7 +182,8 @@ public final class ViewerPanel {
         // 触らない。
 
         scroll.documentView = textView
-        // 階層: panel.contentView = root (solid dark) → scroll → textView。
+        // 階層: panel.contentView = root (solid dark, 角丸 in HUD) → scroll
+        // → textView。
         root.addSubview(scroll)
         panel.contentView = root
     }
@@ -173,15 +191,16 @@ public final class ViewerPanel {
     /// markdown=true は swift-markdown でパースして MarkdownRenderer に投げる。
     /// 非 markdown は plain text を line-spacing 付き attributed に。
     private static func renderAttributed(text: String,
-                                         markdown: Bool) -> NSAttributedString {
+                                         markdown: Bool,
+                                         fontSize: CGFloat) -> NSAttributedString {
         if markdown {
-            let renderer = MarkdownRenderer(style: rendererStyle())
+            let renderer = MarkdownRenderer(style: rendererStyle(fontSize: fontSize))
             return renderer.render(text)
         }
         let p = NSMutableParagraphStyle()
         p.lineSpacing = bodyLineSpacing
         return NSAttributedString(string: text, attributes: [
-            .font: NSFont.systemFont(ofSize: baseFontSize),
+            .font: NSFont.systemFont(ofSize: fontSize),
             .foregroundColor: NSColor.labelColor,
             .paragraphStyle: p,
         ])
@@ -189,9 +208,9 @@ public final class ViewerPanel {
 
     /// MarkdownRenderer に渡す Style。ViewerPanel の typography constants を
     /// そのまま流し込むだけ。
-    private static func rendererStyle() -> MarkdownRenderer.Style {
+    private static func rendererStyle(fontSize: CGFloat) -> MarkdownRenderer.Style {
         MarkdownRenderer.Style(
-            baseFontSize: baseFontSize,
+            baseFontSize: fontSize,
             bodyLineSpacing: bodyLineSpacing,
             inlineCodeBackground: inlineCodeBackground,
             codeBlockBackground: codeBlockBackground,

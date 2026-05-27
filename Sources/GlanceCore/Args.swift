@@ -10,6 +10,17 @@ public struct Args: Equatable {
     public var width: Double?
     public var height: Double?
     public var copy: Bool
+    /// 本文ベースフォントサイズ。nil なら adapter 側のデフォルト (16pt)。
+    public var fontSize: Double?
+    /// Highlightr のテーマ名 (highlight.js 標準テーマ)。nil なら
+    /// `atom-one-dark` (adapter 側で hardcoded 既定)。
+    public var theme: String?
+    /// syntax highlight を一切しない (code block は全部 plain mono)。
+    /// Highlightr 起動を skip するので最速。
+    public var noHighlight: Bool
+    /// borderless HUD モード。titleBar / closable / resizable を外し、
+    /// 角丸付きの "通知っぽい" 矩形にする。短い toast 表示向け。
+    public var hud: Bool
 
     public init(title: String = "",
                 atX: Double? = nil,
@@ -18,7 +29,11 @@ public struct Args: Equatable {
                 autoCloseSeconds: Double? = nil,
                 width: Double? = nil,
                 height: Double? = nil,
-                copy: Bool = false) {
+                copy: Bool = false,
+                fontSize: Double? = nil,
+                theme: String? = nil,
+                noHighlight: Bool = false,
+                hud: Bool = false) {
         self.title = title
         self.atX = atX
         self.atY = atY
@@ -27,6 +42,10 @@ public struct Args: Equatable {
         self.width = width
         self.height = height
         self.copy = copy
+        self.fontSize = fontSize
+        self.theme = theme
+        self.noHighlight = noHighlight
+        self.hud = hud
     }
 }
 
@@ -109,6 +128,32 @@ public func parseArgs(_ argv: [String]) throws -> ArgsAction {
             }
             args.height = n
             i += 2
+        case "--font-size":
+            // 本文 pt サイズ。markdown 階層 (heading scales) は倍率なので
+            // 同じ relative hierarchy を保ったまま全体が拡縮する。
+            guard i + 1 < argv.count else {
+                throw ArgsParseError.missingValue(a)
+            }
+            guard let n = Double(argv[i + 1]) else {
+                throw ArgsParseError.invalidNumber(a, argv[i + 1])
+            }
+            args.fontSize = n
+            i += 2
+        case "--theme":
+            // Highlightr テーマ名。 atom-one-dark / nord / monokai-sublime /
+            // vs2015 / github-dark など。未知名は Highlightr が黙って no-op
+            // (前テーマのまま) なので、使う側で正しい名前を渡す前提。
+            guard i + 1 < argv.count else {
+                throw ArgsParseError.missingValue(a)
+            }
+            args.theme = argv[i + 1]
+            i += 2
+        case "--no-highlight":
+            args.noHighlight = true
+            i += 1
+        case "--hud":
+            args.hud = true
+            i += 1
         default:
             throw ArgsParseError.unknownFlag(a)
         }

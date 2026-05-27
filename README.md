@@ -51,6 +51,14 @@ Add panel screenshots to docs/img/ and reference them here, e.g.:
 - **Fade in / out** (~0.14s) matching macOS notification timing
 - **Copy on display** via `--copy` (`pbcopy` the stdin alongside the
   panel)
+- **HUD mode** via `--hud` (borderless rounded panel, ideal for short
+  toast-style notifications)
+- **Tunable typography** via `--font-size <pt>` (markdown headings scale
+  relative to this)
+- **Tunable code theme** via `--theme <name>` (any highlight.js theme
+  bundled with Highlightr; default `atom-one-dark`)
+- **Skip syntax highlight** via `--no-highlight` (faster start, plain
+  monospace code blocks)
 - **Auto-close** via `--auto-close <seconds>`
 - **No network**. Reads stdin only; upstream pipeline does the fetching
 - **No Accessibility permission**. Just AppKit / stdin
@@ -119,6 +127,15 @@ some-cmd | glance [flags]
   --auto-close <s>      dismiss after N seconds
   --width <px>          panel width  (default 380)
   --height <px>         panel height (default: auto-size, clamped 80–600)
+  --font-size <pt>      body font size (default 16; markdown headings
+                        scale relative to this)
+  --theme <name>        Highlightr theme for code blocks (default
+                        atom-one-dark). Try: nord, monokai-sublime,
+                        vs2015, github-dark, etc.
+  --no-highlight        skip syntax highlighting entirely (faster start,
+                        no JSCore boot)
+  --hud                 borderless rounded-corner mode for short
+                        toast-style display (no title bar)
   --version / -V        print version, exit
   --help / -h           print help, exit
 
