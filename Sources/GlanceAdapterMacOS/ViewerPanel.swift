@@ -41,9 +41,11 @@ public final class ViewerPanel {
 
     private static let codeBlockBackground = NSColor(name: nil) { app in
         let dark = app.bestMatch(from: [.darkAqua, .vibrantDark]) != nil
+        // inline code (0.10/0.07) よりほんの少し濃く。多行の "ブロック" として
+        // identify しやすい強さに。あまり濃くすると文字が読みにくくなる。
         return dark
-            ? NSColor(white: 1.0, alpha: 0.06)
-            : NSColor(white: 0.0, alpha: 0.04)
+            ? NSColor(white: 1.0, alpha: 0.14)
+            : NSColor(white: 0.0, alpha: 0.09)
     }
 
     /// markdown=true は NSAttributedString(markdown:) で rich render。失敗時は

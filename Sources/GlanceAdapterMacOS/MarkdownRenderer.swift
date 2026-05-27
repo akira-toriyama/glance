@@ -224,7 +224,9 @@ private struct Visitor: MarkupVisitor {
         let p = NSMutableParagraphStyle()
         p.lineSpacing = style.bodyLineSpacing
         p.paragraphSpacingBefore = size * 0.4
-        p.paragraphSpacing = size * 0.25
+        // heading 直後の本文との間に呼吸を入れる。0.25 だと詰まって見えるので
+        // 0.45 で 1 行分弱の余白を作る。
+        p.paragraphSpacing = size * 0.45
 
         let r = NSRange(location: 0, length: inner.length)
         inner.addAttributes([
