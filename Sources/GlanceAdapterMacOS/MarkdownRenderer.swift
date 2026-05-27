@@ -62,12 +62,23 @@ public struct MarkdownRenderer {
     fileprivate static let blockquoteBarColor =
         NSColor(white: 0.55, alpha: 1)
 
-    /// Highlightr を 1 回だけ初期化して共有。JS context 起動が ~30-100ms
-    /// 走るので lazy。code block を含む markdown が来た時点で 1 回温まる。
-    /// glance は単一スレッド UI で、render() は ViewerPanel.init (main) から
-    /// しか呼ばれない。Highlightr 自体は Sendable でないが、アクセスが
-    /// 1 つの isolation domain に閉じているので nonisolated(unsafe) で安全。
-    nonisolated(unsafe) fileprivate static let syntaxHighlighter = SyntaxHighlighter()
+    /// Highlightr instance 共有用。デフォルトは atom-one-dark / highlight 有効。
+    /// `--theme` / `--no-highlight` で書き換える時は ViewerPanel が `configure`
+    /// を呼んで instance ごと差し替える (1 プロセス 1 panel なので race なし)。
+    /// glance は単一スレッド UI なので nonisolated(unsafe) で安全。
+    nonisolated(unsafe) fileprivate static var syntaxHighlighter = SyntaxHighlighter()
+
+    /// CLI 引数を反映して highlighter を作り直す。`--no-highlight` 時は何も
+    /// しない wrapper を入れる。
+    public static func configureSyntaxHighlighter(theme: String?,
+                                                  enabled: Bool) {
+        if !enabled {
+            syntaxHighlighter = SyntaxHighlighter(disabled: true)
+            return
+        }
+        syntaxHighlighter = SyntaxHighlighter(
+            theme: theme ?? "atom-one-dark")
+    }
 
     public func render(_ text: String) -> NSAttributedString {
         let document = Document(parsing: text)
@@ -237,6 +248,14 @@ private struct Visitor: MarkupVisitor {
             .foregroundColor: NSColor.labelColor,
             .paragraphStyle: p,
         ], range: r)
+        // h1 / h2 は GitHub 風の下線を引く (.underlineStyle)。subtle な色で
+        // セクション境界を強調する。h3+ は線を引くとうるさいので付けない。
+        if level <= 2 {
+            inner.addAttributes([
+                .underlineStyle: NSUnderlineStyle.single.rawValue,
+                .underlineColor: NSColor(white: 1.0, alpha: 0.18),
+            ], range: r)
+        }
         return inner
     }
 
@@ -594,21 +613,28 @@ private struct Visitor: MarkupVisitor {
 // MARK: - SyntaxHighlighter
 
 /// Highlightr (highlight.js + JavaScriptCore) を 1 instance だけ抱える
-/// 薄い wrapper。glance の panel は `.hudWindow` material 固定で常に暗色
-/// なので theme は `atom-one-dark` をハードコード。MarkupVisitor の要件が
-/// 非 isolated なので、これも非 isolated にしておく。
+/// 薄い wrapper。theme は CLI から差し替え可能 (`--theme`)、`--no-highlight`
+/// 時は disabled モードで常に nil を返す (Highlightr 起動も skip)。
+/// MarkupVisitor の要件が非 isolated なので、これも非 isolated にしておく。
 final class SyntaxHighlighter {
     private let highlightr: Highlightr?
+    private let disabled: Bool
 
-    init() {
-        self.highlightr = Highlightr()
-        _ = highlightr?.setTheme(to: "atom-one-dark")
+    init(theme: String = "atom-one-dark", disabled: Bool = false) {
+        self.disabled = disabled
+        if disabled {
+            self.highlightr = nil
+        } else {
+            self.highlightr = Highlightr()
+            _ = highlightr?.setTheme(to: theme)
+        }
     }
 
     /// 言語 hint があれば指定で highlight。無ければ何もせず nil (auto-detect
-    /// は意図しない highlight を生むので切る)。caller は nil 時 plain mono に
-    /// fallback する。
+    /// は意図しない highlight を生むので切る)。disabled 時も常に nil。caller
+    /// は nil 時 plain mono に fallback する。
     func highlight(_ code: String, language: String?) -> NSAttributedString? {
+        guard !disabled else { return nil }
         let lang = (language ?? "").trimmingCharacters(in: .whitespaces)
         guard !lang.isEmpty else { return nil }
         return highlightr?.highlight(code, as: lang.lowercased(),

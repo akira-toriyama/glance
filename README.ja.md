@@ -34,6 +34,12 @@ some-cmd | glance --title "Result" --at 800 500
 - **自動高さ** (`--height` 省略時、80–600pt の範囲で content fit)
 - **フェード in/out** (~0.14s、macOS notification と同等)
 - **同時 pbcopy** (`--copy` で表示と同時に clipboard へコピー)
+- **HUD モード** (`--hud` で borderless 角丸、短い toast 通知向け)
+- **タイポグラフィ調整** (`--font-size <pt>`、heading 階層も連動して拡縮)
+- **code テーマ切替** (`--theme <name>`、Highlightr 同梱の highlight.js
+  テーマならどれでも。デフォルト `atom-one-dark`)
+- **syntax highlight を切る** (`--no-highlight`、起動最速 / code は plain
+  monospace)
 - **自動 close** (`--auto-close <秒>`)
 - **ネットワーク呼び出しなし**。stdin だけ読む。HTTP は pipeline 上流の責務
 - **Accessibility 権限不要**。AppKit + stdin のみ
@@ -100,6 +106,15 @@ some-cmd | glance [flags]
   --auto-close <秒>     N 秒後に自動 close
   --width <px>          panel 幅 (デフォルト 380)
   --height <px>         panel 高さ (省略時: content 自動 fit、80–600pt クランプ)
+  --font-size <pt>      本文フォントサイズ (デフォルト 16。markdown の
+                        見出し階層はこの倍率で派生)
+  --theme <name>        code block の Highlightr テーマ (デフォルト
+                        atom-one-dark)。nord / monokai-sublime / vs2015 /
+                        github-dark など
+  --no-highlight        syntax highlight を完全に切る (起動最速、
+                        JSCore ブート無し)
+  --hud                 borderless 角丸モード (短い toast 表示向け、
+                        title bar 無し)
   --version / -V        バージョン表示して exit
   --help / -h           ヘルプ表示して exit
 
