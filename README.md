@@ -53,6 +53,10 @@ Add panel screenshots to docs/img/ and reference them here, e.g.:
   panel)
 - **HUD mode** via `--hud` (borderless rounded panel, ideal for short
   toast-style notifications)
+- **Sticky mode** via `--sticky` (only the title-bar X button dismisses;
+  click-outside and `--auto-close` are disabled; Esc / ⌘W stay as a
+  keyboard safety valve). Mutually exclusive with `--hud` /
+  `--auto-close`.
 - **Tunable typography** via `--font-size <pt>` (markdown headings scale
   relative to this)
 - **Tunable code theme** via `--theme <name>` (any highlight.js theme
@@ -136,6 +140,10 @@ some-cmd | glance [flags]
                         no JSCore boot)
   --hud                 borderless rounded-corner mode for short
                         toast-style display (no title bar)
+  --sticky              only the title-bar X button dismisses the panel
+                        (no click-outside, no auto-close). Esc / ⌘W
+                        stay as a safety valve. Mutually exclusive with
+                        --hud and --auto-close.
   --version / -V        print version, exit
   --help / -h           print help, exit
 

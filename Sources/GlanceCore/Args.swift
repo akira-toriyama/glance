@@ -21,6 +21,12 @@ public struct Args: Equatable {
     /// borderless HUD モード。titleBar / closable / resizable を外し、
     /// 角丸付きの "通知っぽい" 矩形にする。短い toast 表示向け。
     public var hud: Bool
+    /// 「panel 外クリックでは閉じない」モード。**X ボタン** が主役の
+    /// dismiss 経路。`--auto-close` も無効化する。Esc / ⌘W は誤操作で
+    /// 詰まらないよう **そのまま** 残す (キーボード安全弁)。長時間
+    /// reference 用 / 注意を引きたい通知の用途。`--hud` (X ボタン無し) や
+    /// `--auto-close` (矛盾) との組み合わせは parseArgs でエラーにする。
+    public var sticky: Bool
 
     public init(title: String = "",
                 atX: Double? = nil,
@@ -33,7 +39,8 @@ public struct Args: Equatable {
                 fontSize: Double? = nil,
                 theme: String? = nil,
                 noHighlight: Bool = false,
-                hud: Bool = false) {
+                hud: Bool = false,
+                sticky: Bool = false) {
         self.title = title
         self.atX = atX
         self.atY = atY
@@ -46,6 +53,7 @@ public struct Args: Equatable {
         self.theme = theme
         self.noHighlight = noHighlight
         self.hud = hud
+        self.sticky = sticky
     }
 }
 
@@ -53,6 +61,7 @@ public enum ArgsParseError: Error, Equatable {
     case missingValue(String)
     case invalidNumber(String, String)
     case unknownFlag(String)
+    case invalidCombination(String)
 }
 
 public enum ArgsAction {
@@ -154,9 +163,23 @@ public func parseArgs(_ argv: [String]) throws -> ArgsAction {
         case "--hud":
             args.hud = true
             i += 1
+        case "--sticky":
+            // X ボタン以外では閉じない厳格モード。
+            args.sticky = true
+            i += 1
         default:
             throw ArgsParseError.unknownFlag(a)
         }
+    }
+    // --sticky 系の整合性チェック (post-parse validation)。
+    if args.sticky && args.hud {
+        throw ArgsParseError.invalidCombination(
+            "--sticky requires the title bar close button; --hud is " +
+            "borderless and has none")
+    }
+    if args.sticky && args.autoCloseSeconds != nil {
+        throw ArgsParseError.invalidCombination(
+            "--sticky and --auto-close are contradictory; drop one")
     }
     return .viewer(args)
 }

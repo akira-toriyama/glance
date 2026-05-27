@@ -140,6 +140,39 @@ final class ArgsTests: XCTestCase {
         XCTAssertFalse(a.hud)
     }
 
+    // MARK: --sticky
+
+    func testStickyFlag() throws {
+        guard case .viewer(let a) = try parseArgs(["--sticky"]) else {
+            return XCTFail("expected .viewer")
+        }
+        XCTAssertTrue(a.sticky)
+    }
+
+    func testStickyDefaultsFalse() throws {
+        guard case .viewer(let a) = try parseArgs([]) else {
+            return XCTFail("expected .viewer")
+        }
+        XCTAssertFalse(a.sticky)
+    }
+
+    func testStickyAndHudIsInvalidCombo() {
+        XCTAssertThrowsError(try parseArgs(["--sticky", "--hud"])) { error in
+            guard case .invalidCombination = error as? ArgsParseError else {
+                return XCTFail("expected invalidCombination, got \(error)")
+            }
+        }
+    }
+
+    func testStickyAndAutoCloseIsInvalidCombo() {
+        XCTAssertThrowsError(
+            try parseArgs(["--sticky", "--auto-close", "5"])) { error in
+            guard case .invalidCombination = error as? ArgsParseError else {
+                return XCTFail("expected invalidCombination, got \(error)")
+            }
+        }
+    }
+
     func testAutoCloseFlag() throws {
         guard case .viewer(let a) = try parseArgs(
             ["--auto-close", "3.5"]) else {
