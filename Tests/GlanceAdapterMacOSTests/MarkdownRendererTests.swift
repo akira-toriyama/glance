@@ -129,4 +129,90 @@ final class MarkdownRendererTests: XCTestCase {
         let url = out.attribute(.link, at: r.location, effectiveRange: nil) as? URL
         XCTAssertEqual(url?.absoluteString, "https://apple.com")
     }
+
+    func testLinkRunHasAccentForeground() {
+        let out = render("[link](https://x.com)")
+        let nsString = out.string as NSString
+        let r = nsString.range(of: "link")
+        let fg = out.attribute(.foregroundColor,
+                               at: r.location, effectiveRange: nil) as? NSColor
+        XCTAssertEqual(fg, NSColor.controlAccentColor)
+    }
+
+    func testLinkRunHasSingleUnderline() {
+        let out = render("[link](https://x.com)")
+        let nsString = out.string as NSString
+        let r = nsString.range(of: "link")
+        let style = out.attribute(.underlineStyle,
+                                  at: r.location, effectiveRange: nil) as? Int
+        XCTAssertEqual(style, NSUnderlineStyle.single.rawValue)
+    }
+
+    // MARK: heading hierarchy
+    // (h1/h2 underline tests live with the feature in PR #2 / more-flags.)
+
+    func testHeadingLevelDrivesFontSize() {
+        // h1 のフォントサイズは h3 より大きいはず。具体値は scales 配列に
+        // 依存するが、大小関係はテストで固定。
+        let h1Out = render("# size")
+        let h3Out = render("### size")
+        let h1NSStr = h1Out.string as NSString
+        let h3NSStr = h3Out.string as NSString
+        let h1R = h1NSStr.range(of: "size")
+        let h3R = h3NSStr.range(of: "size")
+        let h1f = h1Out.attribute(.font, at: h1R.location,
+                                  effectiveRange: nil) as? NSFont
+        let h3f = h3Out.attribute(.font, at: h3R.location,
+                                  effectiveRange: nil) as? NSFont
+        XCTAssertNotNil(h1f)
+        XCTAssertNotNil(h3f)
+        XCTAssertGreaterThan(h1f!.pointSize, h3f!.pointSize)
+    }
+
+    // MARK: lists
+
+    func testUnorderedListUsesBulletGlyph() {
+        let out = render("- one\n- two")
+        XCTAssertTrue(out.string.contains("•"),
+                      "unordered list should use • bullet")
+    }
+
+    func testOrderedListNumbers() {
+        let out = render("1. one\n2. two")
+        XCTAssertTrue(out.string.contains("1."))
+        XCTAssertTrue(out.string.contains("2."))
+    }
+
+    // MARK: empty / edge cases
+
+    func testEmptyInputProducesEmptyOutput() {
+        let out = render("")
+        XCTAssertEqual(out.length, 0)
+    }
+
+    func testParagraphsConcatenateWithNewline() {
+        let out = render("first\n\nsecond")
+        XCTAssertTrue(out.string.contains("first"))
+        XCTAssertTrue(out.string.contains("second"))
+        XCTAssertTrue(out.string.contains("\n"))
+    }
+
+    // MARK: blockquote
+
+    func testBlockQuoteUsesSecondaryLabelColor() {
+        let out = render("> quoted")
+        let nsString = out.string as NSString
+        let r = nsString.range(of: "quoted")
+        let fg = out.attribute(.foregroundColor,
+                               at: r.location, effectiveRange: nil) as? NSColor
+        XCTAssertEqual(fg, NSColor.secondaryLabelColor)
+    }
+
+    // MARK: thematic break
+
+    func testThematicBreakRendersHorizontalRule() {
+        let out = render("before\n\n---\n\nafter")
+        XCTAssertTrue(out.string.contains("─"),
+                      "thematic break should produce ─ glyph row")
+    }
 }
