@@ -19,8 +19,25 @@ some-cmd | glance --title "Result" --at 800 500
 
 - **Non-activating panel.** `.nonactivatingPanel` + `becomesKeyOnlyIfNeeded`
   → source app keeps keyboard focus (PopClip-style)
-- **Markdown rendering** via `NSAttributedString(markdown:)` with `--markdown`
-- **Anchor + sizing** via `--at <x> <y>` (Cocoa coords) + `--width` / `--height`
+- **Solid VSCode-like dark theme** (`#1E1E1E`) with forced `darkAqua`
+  appearance for predictable contrast
+- **Full GFM Markdown** with `--markdown`: headings, bold/italic,
+  inline & block code, blockquote (left bar), lists, **tables**,
+  **task lists** (`- [x]`), **strikethrough**, links — via Apple's
+  [swift-markdown](https://github.com/swiftlang/swift-markdown)
+- **Syntax highlighting** in code blocks via
+  [Highlightr](https://github.com/raspu/Highlightr) (highlight.js +
+  JavaScriptCore). Language hint from the fence (` ```swift `) drives
+  the lexer; no-hint blocks stay plain
+- **VSCode-style language label** in the top-right corner of each
+  fenced code block
+- **Anchor + sizing** via `--at <x> <y>` (Cocoa coords) + `--width` /
+  `--height`. Anchors are auto-clamped to `visibleFrame`
+- **Auto-size height** to content (clamped 80–600pt) when `--height`
+  is omitted
+- **Fade in / out** (~0.14s) matching macOS notification timing
+- **Copy on display** via `--copy` (`pbcopy` the stdin alongside the
+  panel)
 - **Auto-close** via `--auto-close <seconds>`
 - **No network**. Reads stdin only; upstream pipeline does the fetching
 - **No Accessibility permission**. Just AppKit / stdin
@@ -81,11 +98,14 @@ some-cmd | glance [flags]
 
   --title <s>           window title
   --at <x> <y>          anchor (Cocoa screen coords, Y-up).
-                        Panel top-left = this point. Default: screen center.
-  --markdown            render stdin as Markdown
+                        Panel top-left = this point. Default: screen
+                        center. Clamped to visibleFrame so the panel
+                        never falls off-screen.
+  --markdown            render stdin as Markdown (CommonMark + GFM)
+  --copy                also copy stdin to clipboard (pbcopy)
   --auto-close <s>      dismiss after N seconds
   --width <px>          panel width  (default 380)
-  --height <px>         panel height (default 240)
+  --height <px>         panel height (default: auto-size, clamped 80–600)
   --version / -V        print version, exit
   --help / -h           print help, exit
 
@@ -122,7 +142,7 @@ date | glance --auto-close 4 --title 'Now'
 The panel goes away when:
 
 - You click outside (global mouse monitor catches it)
-- You press **Esc** (when the panel transiently became key)
+- You press **Esc** or **⌘W** (when the panel transiently became key)
 - The standard close button (red dot) is clicked
 - `--auto-close N` timer expires
 
@@ -132,10 +152,15 @@ The panel goes away when:
   pipe non-empty text. Empty stdin is a deliberate no-op.
 - **Panel steals focus**: shouldn't happen by design (`.nonactivatingPanel`).
   If it does, file a bug with reproduction.
-- **Markdown renders wrong**: `NSAttributedString(markdown:)` is macOS 12+ and
-  supports inline syntax preserving whitespace. Block-level (#, ``` , >) is
-  intentionally simplified — for richer rendering, render the markdown
-  upstream and pipe HTML/plain text.
+- **Markdown looks plain (no highlight)**: language-less fenced blocks
+  (` ``` ` with no `swift` / `python` / etc) stay plain mono by design.
+  Add a fence language hint to opt into syntax highlight.
+- **Long code line doesn't wrap nicely**: code blocks wrap at the
+  character (not word) boundary, which is intentional — code rarely has
+  meaningful word boundaries. If you want no wrap, pre-format upstream.
+- **Highlightr first call is slow**: the JavaScriptCore context warms
+  up on the first highlighted block (~30–100ms). Subsequent blocks in
+  the same process are instant.
 
 ## Development
 
@@ -150,9 +175,15 @@ swift test                 # run XCTest suite (GlanceCoreTests)
 ```
 
 - SwiftPM project, hexagonal 3-layer:
-  `Sources/GlanceCore` (pure logic) /
-  `Sources/GlanceAdapterMacOS` (AppKit) /
+  `Sources/GlanceCore` (pure logic, Foundation only) /
+  `Sources/GlanceAdapterMacOS` (AppKit + markdown rendering /
+  syntax highlight) /
   `Sources/GlanceApp` (CLI + @main)
+- Dependencies (SwiftPM, MIT / Apache-2 compatible only):
+  - [swift-markdown](https://github.com/swiftlang/swift-markdown)
+    (Apache-2) — CommonMark + GFM parser
+  - [Highlightr](https://github.com/raspu/Highlightr)
+    (MIT) — highlight.js + JavaScriptCore wrapper
 - Suggested commit convention: gitmoji + Conventional Commits
   (`scripts/hooks/commit-msg` validates; enable with
   `git config core.hooksPath scripts/hooks`)
