@@ -12,3 +12,6 @@
 
 # macOS
 .DS_Store
+
+# Claude Code harness runtime (ScheduleWakeup lock 等)
+.claude/

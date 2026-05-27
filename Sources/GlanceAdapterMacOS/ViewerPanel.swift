@@ -11,6 +11,9 @@ public final class ViewerPanel {
     private let panel: NSPanel
     private var clickOutsideMonitor: Any?
     private var keyDownMonitor: Any?
+    /// `--sticky`: 外クリックと auto-close を無効化、X ボタンが主 dismiss。
+    /// Esc / ⌘W は安全弁として残す。
+    private let sticky: Bool
 
     /// fade-in/out 時間。短すぎると pop に見え、長すぎると mousing と被る。
     /// macOS 通知センターの 0.15s 前後に合わせる。
@@ -42,6 +45,7 @@ public final class ViewerPanel {
     private static let hudCornerRadius: CGFloat = 10
 
     public init(text: String, args: Args) {
+        self.sticky = args.sticky
         // CLI から syntax highlighter を構成。`--no-highlight` 時は Highlightr
         // 自体を起動しない (JSCore 起動 ~30-100ms を skip)。
         MarkdownRenderer.configureSyntaxHighlighter(
@@ -248,15 +252,20 @@ public final class ViewerPanel {
             panel.animator().alphaValue = 1
         }
 
-        // panel 外クリックで close。global monitor は他アプリの click を見る。
-        clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(
-            matching: [.leftMouseDown, .rightMouseDown,
-                       .otherMouseDown]) { [weak self] _ in
-            self?.dismiss()
+        // panel 外クリックで close。`--sticky` 時は意図的に張らない。
+        // Esc / ⌘W / X ボタンだけが dismiss 経路になる。
+        if !sticky {
+            clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(
+                matching: [.leftMouseDown, .rightMouseDown,
+                           .otherMouseDown]) { [weak self] _ in
+                self?.dismiss()
+            }
         }
 
         // panel 内のキー入力で Esc / ⌘W を拾う (panel は key になりうる
         // = becomesKeyOnlyIfNeeded で textView click 時のみ key になる)。
+        // `--sticky` 時もここは残す (キーボード安全弁; ⌘C で copy しても
+        // 閉じない / 誤操作で詰まらない)。
         keyDownMonitor = NSEvent.addLocalMonitorForEvents(
             matching: .keyDown) { [weak self] ev in
             if ev.keyCode == 53 {   // Esc
@@ -272,7 +281,9 @@ public final class ViewerPanel {
             return ev
         }
 
-        if let seconds = autoCloseSeconds {
+        // `--sticky` 時は auto-close を張らない (parseArgs で組合せ自体は
+        // 弾いているので、ここでは念のための double-check)。
+        if !sticky, let seconds = autoCloseSeconds {
             DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
                 [weak self] in self?.dismiss()
             }

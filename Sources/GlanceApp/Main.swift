@@ -7,7 +7,7 @@ import GlanceCore
 /// XCTest once CLI tests land. Same pattern facet / chord / perch / eventfx.
 @main
 enum GlanceApp {
-    static let version = "0.1.0"
+    static let version = "0.2.0"
 
     @MainActor
     static func main() {
@@ -64,6 +64,8 @@ enum GlanceApp {
             return "\(flag): not a number: \(raw)"
         case .unknownFlag(let f):
             return "unknown flag: \(f)"
+        case .invalidCombination(let msg):
+            return msg
         }
     }
 
@@ -97,6 +99,11 @@ enum GlanceApp {
                                start, no JSCore boot)
           --hud                borderless rounded-corner mode for short
                                toast-style display (no title bar)
+          --sticky             only the title-bar X button dismisses the
+                               panel (no click-outside, no auto-close).
+                               Esc / ⌘W still work as a safety valve.
+                               Mutually exclusive with --hud and
+                               --auto-close.
           --version / -V       print version, exit
           --help / -h          print this help, exit
 

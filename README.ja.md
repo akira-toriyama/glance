@@ -48,6 +48,9 @@ docs/img/ に panel の screenshot を置いて、ここで参照する想定。
 - **フェード in/out** (~0.14s、macOS notification と同等)
 - **同時 pbcopy** (`--copy` で表示と同時に clipboard へコピー)
 - **HUD モード** (`--hud` で borderless 角丸、短い toast 通知向け)
+- **Sticky モード** (`--sticky` で X ボタンのみ dismiss 経路。
+  click-outside と `--auto-close` を無効化。Esc / ⌘W はキーボード安全弁
+  として残る。`--hud` / `--auto-close` とは排他)
 - **タイポグラフィ調整** (`--font-size <pt>`、heading 階層も連動して拡縮)
 - **code テーマ切替** (`--theme <name>`、Highlightr 同梱の highlight.js
   テーマならどれでも。デフォルト `atom-one-dark`)
@@ -128,6 +131,9 @@ some-cmd | glance [flags]
                         JSCore ブート無し)
   --hud                 borderless 角丸モード (短い toast 表示向け、
                         title bar 無し)
+  --sticky              titleBar の X ボタンのみで dismiss。click-outside
+                        と --auto-close を無効化。Esc / ⌘W はキーボード
+                        安全弁として残る。--hud / --auto-close とは排他。
   --version / -V        バージョン表示して exit
   --help / -h           ヘルプ表示して exit
 
