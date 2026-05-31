@@ -189,13 +189,17 @@ panel は次のいずれかで消える:
   したくなければ上流で整形を。
 - **Highlightr の初回が遅い**: JavaScriptCore の起動が初回 ~30–100ms
   かかる。同一プロセス内の 2 回目以降は instant。
+- **glance の挙動を覗きたい**: `GLANCE_DEBUG=1` を前置して起動
+  (`… | GLANCE_DEBUG=1 glance …`) すると引数 / stdin サイズ / 最終
+  (clamp 後) panel frame / dismiss を stderr + `/tmp/glance.log` に trace。
+  通常起動では set されず静か。`--debug` flag は無い。
 
 ## 開発
 
 ```sh
 ./build.sh                 # swift build + codesign + bin/ に配置
-./run.sh                   # build + ~/.local/bin に install
-./run.sh --demo            # build + smoke test (printf | ./bin/glance)
+./run.sh                   # build + verbose demo 起動 (GLANCE_DEBUG=1; panel + /tmp/glance.log)
+./run.sh --install         # ~/.local/bin に配置 (= ./install.sh、静音)
 ./stop.sh                  # 残った glance panel を強制停止 (稀)
 ./setup-signing-cert.sh    # 初回のみ: 持続自己署名 identity を作成
 ./scripts/build-icon.sh    # AppIcon.icns を SF Symbol から再生成

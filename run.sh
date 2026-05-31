@@ -1,20 +1,25 @@
 #!/bin/sh
-# Build + install glance to ~/.local/bin. Daemon は持たないので
-# eventfx の run.sh と違って bootstrap は無い。
+# glance を verbose でローカル起動する dev ループ。glance は daemon を
+# 持たないので、他アプリの `./run.sh`(常駐アプリを <APP>_DEBUG 付きで起動)
+# に相当するのは GLANCE_DEBUG=1 で demo を起動する事 ＝ 無印 ./run.sh。
+# 本番配置 (~/.local/bin) は ./install.sh に分離 (= ./run.sh --install)。
 #
-#   ./run.sh              build + install.sh
-#   ./run.sh --demo / -d  build + 簡単な smoke test (printf | glance)
-#   ./run.sh --help       使い方
+#   ./run.sh               build + verbose demo 起動 (GLANCE_DEBUG=1、panel + /tmp/glance.log)
+#   ./run.sh --demo / -d   同上 (明示)
+#   ./run.sh --install/-i  ~/.local/bin に配置 (= ./install.sh、静音)
+#   ./run.sh --help        使い方
 set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
 
 case "${1:-}" in
-    -d|--demo)
+    ""|-d|--demo)
         ./build.sh
         # GFM + syntax highlight + table + blockquote + task list を
         # ひとまとめに、glance の今の能力が一画面で確認できる demo。
         # auto-close を入れないので user が明示的に dismiss するまで残る。
+        # dev loop なので GLANCE_DEBUG=1 付き — 引数 / stdin / panel frame /
+        # dismiss の trace が stderr + /tmp/glance.log に出る (通常 install は静か)。
         # NOTE: 単引用符内の \(name) 等は意図的に shell expansion させない
         # markdown 内の文字列なので SC2016 を disable。
         # shellcheck disable=SC2016
@@ -60,13 +65,15 @@ def fibonacci(n: int) -> list[int]:
 ---
 
 Esc / ⌘W / panel 外クリックで dismiss。
-' | ./bin/glance --title "glance demo" --markdown --width 540
+' | GLANCE_DEBUG=1 ./bin/glance --title "glance demo" --markdown --width 540
+        ;;
+    -i|--install)
+        exec ./install.sh
         ;;
     --help|-h)
-        echo "usage: ./run.sh [--demo|-d]"
-        ;;
-    "")
-        exec ./install.sh
+        echo "usage: ./run.sh                build + verbose demo (GLANCE_DEBUG=1)"
+        echo "       ./run.sh --demo | -d     same (explicit)"
+        echo "       ./run.sh --install | -i  deploy to ~/.local/bin (= ./install.sh)"
         ;;
     *)
         echo "unknown flag: $1" >&2

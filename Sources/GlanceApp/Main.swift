@@ -12,6 +12,10 @@ enum GlanceApp {
     @MainActor
     static func main() {
         let argv = Array(CommandLine.arguments.dropFirst())
+        // Verbose logging is env-var-triggered (GLANCE_DEBUG=1) — run.sh's
+        // --demo path sets it; a normal pipe invocation stays quiet. There is
+        // no --debug flag (matches the facet/chord/wand/eventfx/perch family).
+        debugMode = ProcessInfo.processInfo.environment["GLANCE_DEBUG"] != nil
         let action: ArgsAction
         do {
             action = try parseArgs(argv)
@@ -29,9 +33,14 @@ enum GlanceApp {
         case .showVersion: print("glance \(version)"); exit(0)
         case .viewer(let args):
             let text = readStdin()
+            Log.debug("stdin: \(text.count) chars; markdown=\(args.markdown) "
+                + "title=\(args.title.isEmpty ? "—" : args.title)")
             // 空 input は黙って no-op (pipeline で curl が失敗した時に
             // 空 panel が出てもノイズなだけ)。
-            guard !text.isEmpty else { exit(0) }
+            guard !text.isEmpty else {
+                Log.debug("stdin empty — silent no-op exit")
+                exit(0)
+            }
             runViewer(text: text, args: args)
         }
     }
@@ -46,6 +55,7 @@ enum GlanceApp {
         viewer.present(autoCloseSeconds: args.autoCloseSeconds,
                        copy: args.copy,
                        copyText: text)
+        Log.debug("panel presented — entering run loop")
         // viewer 内で dismiss されると NSApp.terminate が呼ばれてここから抜ける。
         app.run()
     }
