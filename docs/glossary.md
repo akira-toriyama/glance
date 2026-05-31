@@ -1,3 +1,10 @@
+---
+title: glance 用語集
+tags: [glossary, macos, cli, panel]
+repo: glance
+aliases: []
+---
+
 # 用語集 — glance のユビキタス言語
 
 glance を構成する各パーツの **正規の呼び名** をまとめた規範ドキュメント。
