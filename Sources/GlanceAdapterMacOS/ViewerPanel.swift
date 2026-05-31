@@ -241,6 +241,8 @@ public final class ViewerPanel {
     /// pbcopy にも流す (翻訳結果を後で paste するフロー向け)。
     public func present(autoCloseSeconds: Double?, copy: Bool = false,
                         copyText: String = "") {
+        Log.debug("present: frame=\(panel.frame) sticky=\(sticky) "
+            + "autoClose=\(autoCloseSeconds.map { String($0) } ?? "off") copy=\(copy)")
         if copy && !copyText.isEmpty {
             let pb = NSPasteboard.general
             pb.clearContents()
@@ -291,6 +293,7 @@ public final class ViewerPanel {
     }
 
     private func dismiss() {
+        Log.debug("dismiss")
         if let m = clickOutsideMonitor {
             NSEvent.removeMonitor(m)
             clickOutsideMonitor = nil

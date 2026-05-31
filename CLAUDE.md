@@ -47,8 +47,8 @@ Tests/GlanceCoreTests/    ArgsTests: flag parse + error cases。
 | script | 用途 |
 |---|---|
 | `./build.sh` | swift build → `bin/glance` cp → codesign (持続 / ad-hoc) |
-| `./run.sh` | build + `install.sh` 委譲 (`~/.local/bin/glance` 配置) |
-| `./run.sh --demo` / `-d` | build + 簡単な smoke test (`printf ... \| ./bin/glance`) |
+| `./run.sh` (無印) / `--demo` | build + verbose demo 起動 (`GLANCE_DEBUG=1`; panel + stderr + `/tmp/glance.log`)。他アプリの `./run.sh`(launch) 相当 |
+| `./run.sh --install` / `-i` | `install.sh` 委譲 (`~/.local/bin/glance` 配置・静音)。他アプリの brew install 相当 |
 | `./stop.sh` | stuck panel が居たら `pkill`。通常は user dismiss で自滅 |
 | `./install.sh` | build → `~/.local/bin/glance` 配置 |
 | `./setup-signing-cert.sh` | 持続自己署名 identity (`glance-dev`) 作成 |
@@ -102,15 +102,21 @@ glance --help                 print help, exit
 
 | ログ先 | 条件 |
 |---|---|
-| stderr | parse error / 起動失敗時 |
+| stderr | parse error / 起動失敗時、または `GLANCE_DEBUG=1` の debug ミラー |
+| `/tmp/glance.log` | `GLANCE_DEBUG=1` 時の verbose trace (引数 / stdin サイズ / panel frame / dismiss) |
 | (なし) | 通常運転中は黙る。"Result が出ない" → 上流 pipeline を疑う |
 
 調査の早道:
 
-- `printf 'x' | ./bin/glance --title test` で最低限の表示確認
-- `./run.sh --demo` で 1 行 markdown smoke test
+- `printf 'x' | glance --title test` で最低限の表示確認 (`GLANCE_DEBUG=1`
+  を前置すると trace 付き: `printf 'x' | GLANCE_DEBUG=1 glance --title test`)
+- `./run.sh`(無印) / `--demo` は `GLANCE_DEBUG=1` 付きで起動 (stderr + /tmp/glance.log)
 - 上流の問題なら `... | tee /tmp/glance-in.txt | glance ...` で
   入力を覗ける
+
+**verbose の唯一のトリガは `GLANCE_DEBUG` 環境変数** (`--debug` flag は無い —
+facet/chord/wand/eventfx/perch 家系と統一)。通常 pipe 起動では set されず静か。
+`Log` (always-on `Log.line` + gated `Log.debug`) は `GlanceCore` に在る。
 
 ## Conventions
 

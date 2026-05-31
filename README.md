@@ -199,13 +199,18 @@ The panel goes away when:
 - **Highlightr first call is slow**: the JavaScriptCore context warms
   up on the first highlighted block (~30–100ms). Subsequent blocks in
   the same process are instant.
+- **Want to see what glance is doing**: set `GLANCE_DEBUG=1`
+  (e.g. `… | GLANCE_DEBUG=1 glance …`) to trace argument parsing, stdin
+  size, the final (clamped) panel frame, and dismissal — to stderr and
+  `/tmp/glance.log`. A normal invocation sets nothing and stays quiet.
+  There is no `--debug` flag.
 
 ## Development
 
 ```sh
 ./build.sh                 # swift build + codesign + cp to bin/
-./run.sh                   # build + install to ~/.local/bin
-./run.sh --demo            # build + smoke test (printf | ./bin/glance)
+./run.sh                   # build + run a verbose demo (GLANCE_DEBUG=1; panel + /tmp/glance.log)
+./run.sh --install         # deploy to ~/.local/bin (= ./install.sh, quiet)
 ./stop.sh                  # kill any stuck glance panels (rare)
 ./setup-signing-cert.sh    # one-time: persistent self-signed identity
 ./scripts/build-icon.sh    # regenerate AppIcon.icns
