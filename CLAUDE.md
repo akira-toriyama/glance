@@ -3,6 +3,14 @@
 このリポジトリで作業する Claude / エージェント向けの構造・制約・流儀。
 人間の README は [README.md](README.md) / [README.ja.md](README.ja.md)。
 
+## 用語
+
+UI / 設定 / コード上の呼び名は [`docs/glossary.md`](docs/glossary.md) に従う
+— 正規名（`ViewerPanel`, `non-activating panel`, `dismiss paths`,
+`stdin pipeline`, `--auto-close`, `GLANCE_DEBUG`, `one-shot CLI`, …）のみを
+使い、`Don't call it:` 側の同義語は使わない。用語の追加・改名はコード
+変更と **同一 PR で** このファイルへ反映する。
+
 ## What this is
 
 **glance** は stdin で受けた文字列を **非アクティブな macOS NSPanel** に表示する
