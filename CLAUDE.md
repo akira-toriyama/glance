@@ -171,3 +171,8 @@ CLI / commit-msg hook / 5-workflow CI / Homebrew tap 外出し。
 - [wand](https://github.com/akira-toriyama/wand) — `stroke --show-menu` で
   action 選択 UI を出す。クリックされた item の action-cmd が glance を
   呼ぶ pipeline 末端。
+
+## Roadmap board (GitHub Projects)
+
+issue 運用（集約 Project「roadmap」#5・Inbox 既定 / Status フロー / `Closes #N`）は
+family 共通ポリシー。正典 → https://github.com/akira-toriyama/atelier/blob/main/docs/roadmap-board.md
