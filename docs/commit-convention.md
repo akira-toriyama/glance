@@ -28,7 +28,7 @@ This repo commits with **gitmoji + Conventional Commits**; from the messages
 :bug: fix(args): reject --at with non-numeric values
 :zap: perf: skip render when stdin is empty
 :boom: feat!: switch CLI to subcommands
-:memo: docs: document the eventfx → wand → glance pipeline
+:memo: docs: document the trigger → wand → glance pipeline
 :wrench: chore: tidy .gitignore
 :green_heart: ci: pin macos-15 runner
 ```

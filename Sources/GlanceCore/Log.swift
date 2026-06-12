@@ -1,5 +1,5 @@
 // glance verbose logging — mirrors the family convention (facet / chord /
-// wand / eventfx / perch): a `debugMode` global, set once at startup from the
+// wand / perch): a `debugMode` global, set once at startup from the
 // `GLANCE_DEBUG` env var (run.sh's --demo path sets it; a normal pipe
 // invocation stays quiet). There is no `--debug` flag.
 //

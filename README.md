@@ -31,7 +31,7 @@ Add panel screenshots to docs/img/ and reference them here, e.g.:
 ## Highlights
 
 - **Non-activating panel.** `.nonactivatingPanel` + `becomesKeyOnlyIfNeeded`
-  → source app keeps keyboard focus (PopClip-style)
+  → source app keeps keyboard focus (never steals focus)
 - **Soft dark chrome** — the panel + Markdown role colours derive from a
   fixed [sill](https://github.com/akira-toriyama/sill) preset
   (`catppuccin-mocha`, the app family's shared theming library), forced
@@ -77,9 +77,8 @@ The intended composition:
 ```
 selection trigger    →  action shell                 →  glance
 ─────────────────       ─────────────────────────       ─────────
-eventfx (text_selected)  curl ... | jq -r .text |       NSPanel popover
-PopClip extension                                       (no focus capture)
-hotkey + script
+text-selection observer  curl ... | jq -r .text |       NSPanel popover
+hotkey + script                                         (no focus capture)
 ```
 
 glance is intentionally thin: stdin in, panel out. Translation, AI calls,
@@ -167,7 +166,7 @@ printf '%s' "$SELECTION" |
        -H "Authorization: DeepL-Auth-Key $DEEPL_KEY" \
        --data-urlencode "text@-" -d 'target_lang=JA' |
   jq -r '.translations[0].text' |
-  glance --title 'DeepL' --at "$EVENTFX_CURSOR_X" "$EVENTFX_CURSOR_Y"
+  glance --title 'DeepL' --at "$CURSOR_X" "$CURSOR_Y"
 
 # AI summary with markdown
 echo "$LONG_TEXT" |

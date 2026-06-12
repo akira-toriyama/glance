@@ -4,10 +4,10 @@
 //
 // Pipe text in, glance pops a floating panel that does NOT steal focus from
 // the source app. Used as the "result view" end of selection-driven
-// pipelines (eventfx → wand → action shell → glance).
+// pipelines (an upstream trigger → wand → action shell → glance).
 //
 // Architecture is hexagonal (Ports & Adapters), mirroring facet / chord /
-// perch / eventfx:
+// perch:
 //
 //   GlanceCore         pure logic: argv parsing, markdown detection,
 //                      position math. Foundation only.

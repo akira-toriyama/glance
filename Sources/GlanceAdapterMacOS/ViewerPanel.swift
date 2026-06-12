@@ -254,7 +254,7 @@ public final class ViewerPanel {
     }
 
     /// `--at` 指定が画面端にめり込んだ場合に visibleFrame 内へ寄せる。
-    /// 上流 pipeline (eventfx の selection 座標) が画面右端に近い時に有効。
+    /// 上流 pipeline（トリガーの selection 座標）が画面右端に近い時に有効。
     private static func clampToScreen(_ rect: NSRect) -> NSRect {
         guard let screen = NSScreen.main else { return rect }
         let vf = screen.visibleFrame

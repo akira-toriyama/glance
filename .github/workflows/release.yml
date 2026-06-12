@@ -3,7 +3,7 @@ name: Release
 # Rolling-draft model. Push to main → git-cliff computes the next version
 # and creates/updates a single DRAFT release with the built `glance` binary.
 # Publish manually in the GitHub UI to create the tag and trigger
-# update-tap.yml. Mirrors eventfx / facet / chord / perch.
+# update-tap.yml. Mirrors facet / chord / perch.
 on:
   push:
     branches: [main]
