@@ -13,8 +13,29 @@ public struct MarkdownRenderer {
     public struct Style {
         public var baseFontSize: CGFloat
         public var bodyLineSpacing: CGFloat
+        /// 本文 / 見出し / リスト / コード本文 fallback の前景色 (sill `foreground`)。
+        public var foreground: NSColor
+        /// 弱めテキスト: blockquote / raw HTML 本文 / コードブロックの言語
+        /// ラベル / 水平線 (sill `tertiary` = foreground@0.55)。mocha の `muted`
+        /// (#6C7086) は #1E1E2E 上で AA 未達 (3.36:1) のため使わず、可読な
+        /// foreground 由来の tertiary (~6.69:1) に寄せる。
+        public var tertiary: NSColor
+        /// リンク色 (sill `primary`)。
+        public var primary: NSColor
+        /// table セル内側の細罫 (sill `border`)。
+        public var border: NSColor
+        /// inline code pill の背景 (sill `ink(.wash, of:.foreground)`)。
         public var inlineCodeBackground: NSColor
+        /// code block の背景 (sill `ink(.subtle, of:.foreground)`)。
         public var codeBlockBackground: NSColor
+        /// table ヘッダ行の薄い背景 (sill `ink(.subtle, of:.foreground)`)。
+        public var tableHeaderBackground: NSColor
+        /// table 外周の濃い罫線 (sill `ink(.wash, of:.foreground)`)。
+        public var tableOuterBorder: NSColor
+        /// blockquote 左バー / GitHub の ▎ 風 (sill `ink(.strong, of:.foreground)`)。
+        public var blockquoteBar: NSColor
+        /// h1 / h2 下線の subtle な色 (sill `ink(.subtle, of:.foreground)`)。
+        public var headingUnderline: NSColor
         public var codeBlockIndent: CGFloat
         public var blockquoteIndent: CGFloat
         public var listIndent: CGFloat
@@ -24,8 +45,16 @@ public struct MarkdownRenderer {
 
         public init(baseFontSize: CGFloat,
                     bodyLineSpacing: CGFloat,
+                    foreground: NSColor,
+                    tertiary: NSColor,
+                    primary: NSColor,
+                    border: NSColor,
                     inlineCodeBackground: NSColor,
                     codeBlockBackground: NSColor,
+                    tableHeaderBackground: NSColor,
+                    tableOuterBorder: NSColor,
+                    blockquoteBar: NSColor,
+                    headingUnderline: NSColor,
                     codeBlockIndent: CGFloat,
                     blockquoteIndent: CGFloat,
                     listIndent: CGFloat = 18,
@@ -33,8 +62,16 @@ public struct MarkdownRenderer {
                     headingScales: [CGFloat] = [1.75, 1.45, 1.25, 1.12, 1.05, 1.0]) {
             self.baseFontSize = baseFontSize
             self.bodyLineSpacing = bodyLineSpacing
+            self.foreground = foreground
+            self.tertiary = tertiary
+            self.primary = primary
+            self.border = border
             self.inlineCodeBackground = inlineCodeBackground
             self.codeBlockBackground = codeBlockBackground
+            self.tableHeaderBackground = tableHeaderBackground
+            self.tableOuterBorder = tableOuterBorder
+            self.blockquoteBar = blockquoteBar
+            self.headingUnderline = headingUnderline
             self.codeBlockIndent = codeBlockIndent
             self.blockquoteIndent = blockquoteIndent
             self.listIndent = listIndent
@@ -48,19 +85,6 @@ public struct MarkdownRenderer {
     public init(style: Style) {
         self.style = style
     }
-
-    /// table header 用の bg。solid dark 前提で alpha 強め。
-    fileprivate static let tableHeaderBackground =
-        NSColor(white: 1.0, alpha: 0.15)
-
-    /// table の外周罫線。内部の細い罫線とのコントラスト用に少し濃く。
-    fileprivate static let tableOuterBorderColor =
-        NSColor(white: 1.0, alpha: 0.28)
-
-    /// blockquote 左バー (GitHub の ▎ 風)。dark bg #1E1E1E 上で識別できる
-    /// 明るさ。あまり明るくすると主張しすぎるので #888 程度。
-    fileprivate static let blockquoteBarColor =
-        NSColor(white: 0.55, alpha: 1)
 
     /// Highlightr instance 共有用。デフォルトは atom-one-dark / highlight 有効。
     /// `--theme` / `--no-highlight` で書き換える時は ViewerPanel が `configure`
@@ -123,7 +147,7 @@ private struct Visitor: MarkupVisitor {
     private func bodyAttrs() -> [NSAttributedString.Key: Any] {
         [
             .font: bodyFont,
-            .foregroundColor: NSColor.labelColor,
+            .foregroundColor: style.foreground,
             .paragraphStyle: bodyParagraph(),
         ]
     }
@@ -178,7 +202,7 @@ private struct Visitor: MarkupVisitor {
     mutating func visitInlineCode(_ code: InlineCode) -> NSAttributedString {
         NSAttributedString(string: code.code, attributes: [
             .font: monoFont,
-            .foregroundColor: NSColor.labelColor,
+            .foregroundColor: style.foreground,
             .backgroundColor: style.inlineCodeBackground,
             .paragraphStyle: bodyParagraph(),
         ])
@@ -192,7 +216,7 @@ private struct Visitor: MarkupVisitor {
             inner.addAttribute(.link, value: url, range: r)
         }
         inner.addAttribute(.foregroundColor,
-                           value: NSColor.controlAccentColor, range: r)
+                           value: style.primary, range: r)
         inner.addAttribute(.underlineStyle,
                            value: NSUnderlineStyle.single.rawValue, range: r)
         return inner
@@ -245,7 +269,7 @@ private struct Visitor: MarkupVisitor {
         let r = NSRange(location: 0, length: inner.length)
         inner.addAttributes([
             .font: font,
-            .foregroundColor: NSColor.labelColor,
+            .foregroundColor: style.foreground,
             .paragraphStyle: p,
         ], range: r)
         // h1 / h2 は GitHub 風の下線を引く (.underlineStyle)。subtle な色で
@@ -253,7 +277,7 @@ private struct Visitor: MarkupVisitor {
         if level <= 2 {
             inner.addAttributes([
                 .underlineStyle: NSUnderlineStyle.single.rawValue,
-                .underlineColor: NSColor(white: 1.0, alpha: 0.18),
+                .underlineColor: style.headingUnderline,
             ], range: r)
         }
         return inner
@@ -315,7 +339,7 @@ private struct Visitor: MarkupVisitor {
             let labelAttr = NSAttributedString(string: lang + "\n",
                                                attributes: [
                 .font: labelFont,
-                .foregroundColor: NSColor(white: 0.50, alpha: 1),
+                .foregroundColor: style.tertiary,
                 .paragraphStyle: labelP,
             ])
             result.append(labelAttr)
@@ -347,7 +371,7 @@ private struct Visitor: MarkupVisitor {
         } else {
             codeAttr = NSMutableAttributedString(string: code, attributes: [
                 .font: monoFont,
-                .foregroundColor: NSColor.labelColor,
+                .foregroundColor: style.foreground,
             ])
         }
         // セル末は \n でパラグラフ終端 (textBlock の境界)。これが無いと
@@ -365,7 +389,7 @@ private struct Visitor: MarkupVisitor {
         let p = bodyParagraph()
         return NSAttributedString(string: html.rawHTML, attributes: [
             .font: monoFont,
-            .foregroundColor: NSColor.secondaryLabelColor,
+            .foregroundColor: style.tertiary,
             .paragraphStyle: p,
         ])
     }
@@ -395,7 +419,7 @@ private struct Visitor: MarkupVisitor {
             startingColumn: 0, columnSpan: 1)
         block.setWidth(0, type: .absoluteValueType, for: .border)
         block.setWidth(4, type: .absoluteValueType, for: .border, edge: .minX)
-        block.setBorderColor(MarkdownRenderer.blockquoteBarColor, for: .minX)
+        block.setBorderColor(style.blockquoteBar, for: .minX)
         // 左バーと本文の隙間 + 上下に呼吸。
         block.setWidth(12, type: .absoluteValueType, for: .padding, edge: .minX)
         block.setWidth(4,  type: .absoluteValueType, for: .padding, edge: .maxX)
@@ -411,7 +435,7 @@ private struct Visitor: MarkupVisitor {
         let r = NSRange(location: 0, length: inner.length)
         inner.addAttribute(.paragraphStyle, value: p, range: r)
         inner.addAttribute(.foregroundColor,
-                           value: NSColor.secondaryLabelColor, range: r)
+                           value: style.tertiary, range: r)
         return inner
     }
 
@@ -460,7 +484,7 @@ private struct Visitor: MarkupVisitor {
 
         let out = NSMutableAttributedString(string: prefix, attributes: [
             .font: bodyFont,
-            .foregroundColor: NSColor.labelColor,
+            .foregroundColor: style.foreground,
             .paragraphStyle: p,
         ])
         let children = Array(item.children)
@@ -500,7 +524,7 @@ private struct Visitor: MarkupVisitor {
             string: String(repeating: "─", count: 40),
             attributes: [
                 .font: bodyFont,
-                .foregroundColor: NSColor.tertiaryLabelColor,
+                .foregroundColor: style.tertiary,
                 .paragraphStyle: p,
             ])
     }
@@ -527,7 +551,7 @@ private struct Visitor: MarkupVisitor {
         // 外周だけ濃く太く: collapsesBorders=true なので隣接 border は太い方が
         // 勝つ。cell 側は 0.5pt subtle、table 側は 1.2pt はっきり → 結果として
         // 外周だけ濃い枠が出る。
-        textTable.setBorderColor(MarkdownRenderer.tableOuterBorderColor)
+        textTable.setBorderColor(style.tableOuterBorder)
         textTable.setWidth(1.2, type: .absoluteValueType, for: .border)
 
         let out = NSMutableAttributedString()
@@ -589,11 +613,11 @@ private struct Visitor: MarkupVisitor {
         let block = NSTextTableBlock(table: table,
                                      startingRow: row, rowSpan: 1,
                                      startingColumn: column, columnSpan: 1)
-        block.setBorderColor(NSColor.separatorColor)
+        block.setBorderColor(style.border)
         block.setWidth(0.5, type: .absoluteValueType, for: .border)
         block.setWidth(8,   type: .absoluteValueType, for: .padding)
         if isHeader {
-            block.backgroundColor = MarkdownRenderer.tableHeaderBackground
+            block.backgroundColor = style.tableHeaderBackground
         }
         return block
     }

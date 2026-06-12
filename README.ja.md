@@ -31,8 +31,10 @@ docs/img/ に panel の screenshot を置いて、ここで参照する想定。
 
 - **Non-activating panel**。`.nonactivatingPanel` + `becomesKeyOnlyIfNeeded`
   でフォーカスを奪わない (PopClip 風)
-- **VSCode 風 solid dark theme** (`#1E1E1E`、`darkAqua` 強制) で
-  視認性を担保
+- **ソフトダーク chrome** — パネル + Markdown のロール色を、app family
+  共有ライブラリ [sill](https://github.com/akira-toriyama/sill) の固定
+  preset (`catppuccin-mocha`) から導出。`darkAqua` 強制で視認性を担保。
+  固定 (テーマ切替なし) で、下記 Highlightr の code theme とは直交
 - **GFM 完全対応の Markdown** (`--markdown`): 見出し / bold / italic /
   inline & block code / blockquote (左バー) / list / **table** /
   **task list** (`- [x]`) / **strikethrough** / link を

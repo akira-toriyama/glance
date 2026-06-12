@@ -1,5 +1,7 @@
 import AppKit
 import GlanceCore
+import Palette
+import PaletteKit
 
 /// 入力テキストを native NSPanel に表示する viewer。**focus を奪わない** ことが
 /// 設計の核 — `.nonactivatingPanel` style + `becomesKeyOnlyIfNeeded` で実現する。
@@ -33,19 +35,29 @@ public final class ViewerPanel {
     private static let codeBlockParagraphSpacing: CGFloat = 6
     private static let blockquoteIndent: CGFloat = 16
 
-    /// solid #1E1E1E 背景の上でちゃんと見える濃さ。darkAqua 強制なので
-    /// dynamicProvider は不要 (light variant 値は使われない)。
-    /// alpha は panel bg #1E1E1E (white 0.118) との混色結果で決めている。
-    private static let inlineCodeBackground =
-        NSColor(white: 1.0, alpha: 0.22)
-    private static let codeBlockBackground =
-        NSColor(white: 1.0, alpha: 0.18)
+    /// glance の panel chrome は sill の固定ダーク preset 1 枚から導出する。
+    /// catppuccin-mocha (#1E1E2E ≈ 旧ハードコード #1E1E1E) を選び、bg / 本文 /
+    /// markdown の各ロール色を resolve() の派生レシピ + ink() tier から取る
+    /// (plan atelier・北極星=「facet の theme を真似て」を二度と言わない)。
+    /// テーマ切替は持たない — glance は一過性の result-view popover であって
+    /// テーマ対象面ではない。Highlightr の `--theme` (コード構文) はこれと
+    /// 直交で不可侵 (別軸・271 themes は触らない)。
+    private static let chromeTheme = "catppuccin-mocha"
+    private static func chromePalette() -> ResolvedPalette {
+        // forceDark: dark テーマなので NSTextView 選択 / find bar / scroller 等
+        // の system chrome を dark に固定する (旧 .darkAqua 強制の後継)。
+        resolve(paletteFor(chromeTheme), forceDark: true)
+    }
 
     /// HUD モードの角丸半径。macOS の通知バナーと同程度。
     private static let hudCornerRadius: CGFloat = 10
 
     public init(text: String, args: Args) {
         self.sticky = args.sticky
+        // 固定ダーク chrome を sill から 1 回 resolve。以降 panel bg / 本文色 /
+        // markdown ロール色は全てここから導出する。
+        let palette = Self.chromePalette()
+        let chromeBackground = palette.background ?? NSColor(white: 0.118, alpha: 1)
         // CLI から syntax highlighter を構成。`--no-highlight` 時は Highlightr
         // 自体を起動しない (JSCore 起動 ~30-100ms を skip)。
         MarkdownRenderer.configureSyntaxHighlighter(
@@ -63,7 +75,8 @@ public final class ViewerPanel {
         // ユーザが --height で明示した場合はそれを尊重 (clamp なし)。
         let textInset = Self.bodyTextInset
         let attributed = Self.renderAttributed(
-            text: text, markdown: args.markdown, fontSize: fontSize)
+            text: text, markdown: args.markdown, fontSize: fontSize,
+            palette: palette)
 
         let contentWidth = w
         let textWidth = contentWidth - textInset.width * 2
@@ -124,27 +137,30 @@ public final class ViewerPanel {
                                     .fullScreenAuxiliary,
                                     .transient]
         panel.isMovableByWindowBackground = true
-        // VSCode / Xcode の dark theme と同じ硬めの dark gray 背景。
-        // HUD モードは panel 自体は透明にして root の rounded layer で
-        // 角丸付き dark を表示する。それ以外は panel が直接 #1E1E1E。
-        panel.appearance = NSAppearance(named: .darkAqua)
+        // chrome 背景は sill preset (catppuccin-mocha) の background。HUD モード
+        // は panel 自体は透明にして root の rounded layer で角丸付き dark を
+        // 表示する。それ以外は panel が直接 chromeBackground を敷く。
+        if palette.forceDarkAqua {
+            panel.appearance = NSAppearance(named: .darkAqua)
+        }
         if isHud {
             panel.isOpaque = false
             panel.backgroundColor = .clear
         } else {
             panel.isOpaque = true
-            panel.backgroundColor = NSColor(white: 0.118, alpha: 1)
+            panel.backgroundColor = chromeBackground
         }
         panel.hasShadow = true
         panel.alphaValue = 0  // fade-in 用 (present で 1 へ補間)
 
-        // root: ハードコード dark RGB。layer bg は appearance に動的追従しない
-        // ので windowBackgroundColor を入れると現在の app appearance (起動時は
-        // light な事が多い) が焼き付いて panel の darkAqua 強制と矛盾する。
+        // root: 固定 chrome 背景の CGColor。layer bg は appearance に動的追従
+        // しないので windowBackgroundColor を入れると現在の app appearance
+        // (起動時は light な事が多い) が焼き付いて panel の darkAqua 強制と
+        // 矛盾する。chromeBackground は不透明な concrete 色なので問題ない。
         let root = NSView(frame: NSRect(origin: .zero, size: frame.size))
         root.autoresizingMask = [.width, .height]
         root.wantsLayer = true
-        root.layer?.backgroundColor = NSColor(white: 0.118, alpha: 1).cgColor
+        root.layer?.backgroundColor = chromeBackground.cgColor
         if isHud {
             root.layer?.cornerRadius = Self.hudCornerRadius
             root.layer?.masksToBounds = true
@@ -177,13 +193,13 @@ public final class ViewerPanel {
         textView.drawsBackground = false
         textView.textContainerInset = textInset
         textView.font = .systemFont(ofSize: fontSize)
-        textView.textColor = .labelColor
+        textView.textColor = palette.foreground
         textView.usesFindBar = true
 
         textView.textStorage?.setAttributedString(attributed)
-        // foregroundColor / typography は renderAttributed 内で確定済み。
-        // ここで上書きすると blockquote の secondaryLabelColor 等が消えるので
-        // 触らない。
+        // foregroundColor / typography は renderAttributed 内で確定済み
+        // (各 run に sill ロール色が焼かれている)。ここで textView 全体の色を
+        // 上書きすると blockquote の muted 等の per-run 色が消えるので触らない。
 
         scroll.documentView = textView
         // 階層: panel.contentView = root (solid dark, 角丸 in HUD) → scroll
@@ -196,28 +212,42 @@ public final class ViewerPanel {
     /// 非 markdown は plain text を line-spacing 付き attributed に。
     private static func renderAttributed(text: String,
                                          markdown: Bool,
-                                         fontSize: CGFloat) -> NSAttributedString {
+                                         fontSize: CGFloat,
+                                         palette: ResolvedPalette) -> NSAttributedString {
         if markdown {
-            let renderer = MarkdownRenderer(style: rendererStyle(fontSize: fontSize))
+            let renderer = MarkdownRenderer(
+                style: rendererStyle(fontSize: fontSize, palette: palette))
             return renderer.render(text)
         }
         let p = NSMutableParagraphStyle()
         p.lineSpacing = bodyLineSpacing
         return NSAttributedString(string: text, attributes: [
             .font: NSFont.systemFont(ofSize: fontSize),
-            .foregroundColor: NSColor.labelColor,
+            .foregroundColor: palette.foreground,
             .paragraphStyle: p,
         ])
     }
 
-    /// MarkdownRenderer に渡す Style。ViewerPanel の typography constants を
-    /// そのまま流し込むだけ。
-    private static func rendererStyle(fontSize: CGFloat) -> MarkdownRenderer.Style {
+    /// MarkdownRenderer に渡す Style。typography constants は ViewerPanel、色は
+    /// resolved palette から。中立な white-alpha オーバーレイ群は sill の共有
+    /// `ink` tier（foreground 着色なのでテーマ追従）から導出する:
+    /// wash≈inline pill / 外周罫、subtle≈block・header bg・見出し下線、
+    /// strong≈blockquote バー。
+    private static func rendererStyle(fontSize: CGFloat,
+                                      palette: ResolvedPalette) -> MarkdownRenderer.Style {
         MarkdownRenderer.Style(
             baseFontSize: fontSize,
             bodyLineSpacing: bodyLineSpacing,
-            inlineCodeBackground: inlineCodeBackground,
-            codeBlockBackground: codeBlockBackground,
+            foreground: palette.foreground,
+            tertiary: palette.tertiary,
+            primary: palette.primary,
+            border: palette.border,
+            inlineCodeBackground: palette.ink(.wash, of: .foreground),
+            codeBlockBackground: palette.ink(.subtle, of: .foreground),
+            tableHeaderBackground: palette.ink(.subtle, of: .foreground),
+            tableOuterBorder: palette.ink(.wash, of: .foreground),
+            blockquoteBar: palette.ink(.strong, of: .foreground),
+            headingUnderline: palette.ink(.subtle, of: .foreground),
             codeBlockIndent: codeBlockIndent,
             blockquoteIndent: blockquoteIndent,
             codeBlockParagraphSpacing: codeBlockParagraphSpacing)

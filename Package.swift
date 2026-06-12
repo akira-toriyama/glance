@@ -36,6 +36,21 @@ let package = Package(
         // binary size はテーマ CSS + JS 程度。
         .package(url: "https://github.com/raspu/Highlightr.git",
                  from: "2.3.0"),
+        // sill — the swift app family's shared theming library (plan
+        // atelier). glance consumes `Palette` + `PaletteKit` (the AppKit
+        // resolver): it resolves ONE fixed dark preset (catppuccin-mocha,
+        // ≈ the old hand-tuned #1E1E1E) into the popover's panel chrome +
+        // markdown role colours, so glance's look stays drift-free with the
+        // rest of the family instead of hand-copied hex. No catalog
+        // switching (glance is a transient result-view popover, not a
+        // themed surface) and no Effects (no border / line-pets). The
+        // Highlightr `--theme` code-syntax theme stays orthogonal +
+        // untouched.
+        //
+        // Local dev uses `.package(path: "../sill")` for atomic sill+glance
+        // editing; swap to the url + pinned tag below at push time.
+        .package(path: "../sill"),
+        // .package(url: "https://github.com/akira-toriyama/sill", .upToNextMinor(from: "0.5.0")),
     ],
     targets: [
         .target(name: "GlanceCore"),
@@ -45,6 +60,8 @@ let package = Package(
                 "GlanceCore",
                 .product(name: "Markdown", package: "swift-markdown"),
                 .product(name: "Highlightr", package: "Highlightr"),
+                .product(name: "Palette", package: "sill"),
+                .product(name: "PaletteKit", package: "sill"),
             ]),
         .executableTarget(
             name: "GlanceApp",

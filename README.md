@@ -32,8 +32,11 @@ Add panel screenshots to docs/img/ and reference them here, e.g.:
 
 - **Non-activating panel.** `.nonactivatingPanel` + `becomesKeyOnlyIfNeeded`
   → source app keeps keyboard focus (PopClip-style)
-- **Solid VSCode-like dark theme** (`#1E1E1E`) with forced `darkAqua`
-  appearance for predictable contrast
+- **Soft dark chrome** — the panel + Markdown role colours derive from a
+  fixed [sill](https://github.com/akira-toriyama/sill) preset
+  (`catppuccin-mocha`, the app family's shared theming library), forced
+  `darkAqua` for predictable contrast. Fixed look (no theme switching);
+  the Highlightr code theme below stays orthogonal
 - **Full GFM Markdown** with `--markdown`: headings, bold/italic,
   inline & block code, blockquote (left bar), lists, **tables**,
   **task lists** (`- [x]`), **strikethrough**, links — via Apple's

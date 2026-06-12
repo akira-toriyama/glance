@@ -7,13 +7,23 @@ import XCTest
 @MainActor
 final class MarkdownRendererTests: XCTestCase {
 
-    /// テスト共通の Style。値は ViewerPanel デフォルトと意図的に独立させて
-    /// テストが production の constants 変更で壊れないようにする。
+    /// テスト共通の Style。値は ViewerPanel デフォルト / sill preset と意図的に
+    /// 独立させて、テストが production の色変更で壊れないようにする。各ロールは
+    /// 識別しやすいよう別々の色を割り当て (link=primary / blockquote=tertiary の
+    /// アサートがロール取り違えを検出できる)。
     private static let testStyle = MarkdownRenderer.Style(
         baseFontSize: 14,
         bodyLineSpacing: 2,
+        foreground: NSColor(white: 0.95, alpha: 1),
+        tertiary: NSColor(white: 0.50, alpha: 1),
+        primary: NSColor(srgbRed: 0.60, green: 0.40, blue: 0.90, alpha: 1),
+        border: NSColor(white: 1, alpha: 0.10),
         inlineCodeBackground: NSColor(white: 1, alpha: 0.2),
         codeBlockBackground:  NSColor(white: 1, alpha: 0.15),
+        tableHeaderBackground: NSColor(white: 1, alpha: 0.15),
+        tableOuterBorder: NSColor(white: 1, alpha: 0.28),
+        blockquoteBar: NSColor(white: 0.55, alpha: 1),
+        headingUnderline: NSColor(white: 1, alpha: 0.18),
         codeBlockIndent: 8,
         blockquoteIndent: 12,
         codeBlockParagraphSpacing: 4)
@@ -130,13 +140,15 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertEqual(url?.absoluteString, "https://apple.com")
     }
 
-    func testLinkRunHasAccentForeground() {
+    func testLinkRunHasPrimaryForeground() {
+        // link は sill `primary` ロール色 (full authorship)。旧 controlAccent
+        // から theme 由来色へ移行済み。
         let out = render("[link](https://x.com)")
         let nsString = out.string as NSString
         let r = nsString.range(of: "link")
         let fg = out.attribute(.foregroundColor,
                                at: r.location, effectiveRange: nil) as? NSColor
-        XCTAssertEqual(fg, NSColor.controlAccentColor)
+        XCTAssertEqual(fg, Self.testStyle.primary)
     }
 
     func testLinkRunHasSingleUnderline() {
@@ -199,13 +211,16 @@ final class MarkdownRendererTests: XCTestCase {
 
     // MARK: blockquote
 
-    func testBlockQuoteUsesSecondaryLabelColor() {
+    func testBlockQuoteUsesTertiaryColor() {
+        // blockquote 本文は sill `tertiary` (foreground@0.55) で描く。旧
+        // secondaryLabelColor → 当初 muted だったが mocha の muted は #1E1E2E
+        // 上で AA 未達のため可読な tertiary へ寄せた (敵対レビュー指摘)。
         let out = render("> quoted")
         let nsString = out.string as NSString
         let r = nsString.range(of: "quoted")
         let fg = out.attribute(.foregroundColor,
                                at: r.location, effectiveRange: nil) as? NSColor
-        XCTAssertEqual(fg, NSColor.secondaryLabelColor)
+        XCTAssertEqual(fg, Self.testStyle.tertiary)
     }
 
     // MARK: thematic break
