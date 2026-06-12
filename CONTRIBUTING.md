@@ -22,7 +22,7 @@ different tool.
 ## Project layout
 
 SwiftPM, hexagonal 3-layer (same as the [family](README.md#references)
-of facet / chord / perch / eventfx):
+of facet / chord / perch):
 
 ```
 Sources/

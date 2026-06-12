@@ -22,7 +22,7 @@ class Glance < Formula
       glance is a one-shot CLI. Pipe text in to show a non-activating
       NSPanel popover that does NOT steal keyboard focus from the source
       app. Intended as the "result view" end of selection-driven
-      pipelines (eventfx → wand → action shell → glance).
+      pipelines (an upstream trigger → wand → action shell → glance).
 
       Quick smoke test:
         printf 'Hello' | glance --title 'Greeting'

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # setup-signing-cert.sh — create a persistent self-signed identity so
 # glance's codesign identifier stays stable across rebuilds. Same OpenSSL 3
-# + security(1) approach as facet / chord / perch / eventfx.
+# + security(1) approach as facet / chord / perch.
 #
 # glance doesn't need Accessibility permission, so TCC retention isn't the
 # motivation here. But keeping the family signing flow uniform means the

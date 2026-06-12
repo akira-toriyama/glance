@@ -24,9 +24,11 @@ them:
   guaranteed.
 
 - **Accessibility 権限は不要**。glance 自身は OS の Accessibility API を
-  使わない。trigger 元 (eventfx 等) が必要とするだけ。
-  glance does NOT require Accessibility permission. The trigger upstream
-  (eventfx etc.) may need it; glance itself reads stdin and shows a panel.
+  使わない。トリガー元（chord のホットキーやテキスト選択監視など）が
+  必要とするだけ。
+  glance does NOT require Accessibility permission. The upstream trigger
+  (a chord hotkey, or a text-selection observer) may need it; glance
+  itself reads stdin and shows a panel.
 
 - **ネットワークアクセスはしない**。任意の HTTP 呼び出しは pipeline 上流
   (curl 等) の責務。glance はその出力を表示するだけ。

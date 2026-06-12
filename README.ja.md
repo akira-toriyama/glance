@@ -30,7 +30,7 @@ docs/img/ に panel の screenshot を置いて、ここで参照する想定。
 ## 特徴
 
 - **Non-activating panel**。`.nonactivatingPanel` + `becomesKeyOnlyIfNeeded`
-  でフォーカスを奪わない (PopClip 風)
+  でフォーカスを奪わない（ソースアプリのフォーカスを保つ）
 - **VSCode 風 solid dark theme** (`#1E1E1E`、`darkAqua` 強制) で
   視認性を担保
 - **GFM 完全対応の Markdown** (`--markdown`): 見出し / bold / italic /
@@ -67,9 +67,8 @@ docs/img/ に panel の screenshot を置いて、ここで参照する想定。
 ```
 selection trigger    →  action shell                 →  glance
 ─────────────────       ─────────────────────────       ─────────
-eventfx (text_selected)  curl ... | jq -r .text |       NSPanel popover
-PopClip extension                                       (フォーカス奪わない)
-hotkey + script
+text-selection observer  curl ... | jq -r .text |       NSPanel popover
+hotkey + script                                         (フォーカス奪わない)
 ```
 
 glance は意図的に薄い: stdin in, panel out。翻訳・AI 呼び出し・辞書 lookup
@@ -154,7 +153,7 @@ printf '%s' "$SELECTION" |
        -H "Authorization: DeepL-Auth-Key $DEEPL_KEY" \
        --data-urlencode "text@-" -d 'target_lang=JA' |
   jq -r '.translations[0].text' |
-  glance --title 'DeepL' --at "$EVENTFX_CURSOR_X" "$EVENTFX_CURSOR_Y"
+  glance --title 'DeepL' --at "$CURSOR_X" "$CURSOR_Y"
 
 # AI 要約 + Markdown 表示
 echo "$LONG_TEXT" |

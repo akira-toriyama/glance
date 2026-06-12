@@ -4,7 +4,7 @@ import GlanceAdapterMacOS
 import GlanceCore
 
 /// `@main enum GlanceApp` — keeps `@testable import GlanceApp` working from
-/// XCTest once CLI tests land. Same pattern facet / chord / perch / eventfx.
+/// XCTest once CLI tests land. Same pattern facet / chord / perch.
 @main
 enum GlanceApp {
     static let version = "0.2.0"
@@ -14,7 +14,7 @@ enum GlanceApp {
         let argv = Array(CommandLine.arguments.dropFirst())
         // Verbose logging is env-var-triggered (GLANCE_DEBUG=1) — run.sh's
         // --demo path sets it; a normal pipe invocation stays quiet. There is
-        // no --debug flag (matches the facet/chord/wand/eventfx/perch family).
+        // no --debug flag (matches the facet/chord/wand/perch family).
         debugMode = ProcessInfo.processInfo.environment["GLANCE_DEBUG"] != nil
         let action: ArgsAction
         do {

@@ -31,12 +31,12 @@ glance は **pipeline の "結果表示端"**。連携の典型形は以下:
 
 ```mermaid
 flowchart LR
-  EVENTFX["eventfx<br/>(検知)"]
+  TRIGGER["トリガー<br/>(検知)"]
   WAND["wand<br/>--show-menu (action 選択)"]
   SHELL["shell action<br/>(curl / jq 等)"]
   GLANCE["glance<br/>(表示端)"]
   USER["ユーザー"]
-  EVENTFX -->|"$EVENTFX_SELECTION"| WAND
+  TRIGGER -->|"$SELECTION"| WAND
   WAND -->|"action-cmd"| SHELL
   SHELL -->|"stdout"| GLANCE
   GLANCE -.panel.-> USER
@@ -95,7 +95,7 @@ AppKit は含めない。XCTest で単体検証できる範囲。
 ### ViewerPanel
 glance の **唯一の UI surface**。`NSPanel` に `.nonactivatingPanel` style mask
 + `becomesKeyOnlyIfNeeded` で **元アプリのフォーカスを奪わない** panel
-（PopClip toolbar 的 UX）。
+（ツールバー風で、ソースアプリのフォーカスを保つ UX）。
 - コード: [`Sources/GlanceAdapterMacOS/ViewerPanel.swift`](../Sources/GlanceAdapterMacOS/ViewerPanel.swift)
 - **Don't call it:** modal, popup, window, dialog, viewer window,
   モーダル, ポップアップ, ダイアログ, ウィンドウ
@@ -138,7 +138,8 @@ glance の **唯一の入力経路**。HTTP 呼び出し等は **上流の責務
 
 ### `--at <x> <y>`
 panel の top-left anchor を **Cocoa 座標**（Y-up、全スクリーン）で指定する
-フラグ。`eventfx` の `text_selected` で渡る座標と直接整合する
+フラグ。トリガー（chord のホットキーやテキスト選択監視など）が渡す座標と
+直接整合する
 （wand `stroke --show-menu --at` 契約と同形）。
 - **Don't call it:** position, location, coords, 座標指定（フラグ名固定）
 
@@ -155,7 +156,7 @@ glance のライフサイクル契約。**1 プロセス = 1 panel**、stdin 読
 ### `GLANCE_DEBUG`
 **verbose の唯一のトリガ**。環境変数として `1` を立てると `/tmp/glance.log`
 への trace + stderr ミラーが有効になる。**`--debug` フラグは存在しない**
-（facet / chord / wand / eventfx / perch 家系と統一）。
+（facet / chord / wand / perch 家系と統一）。
 - **Don't call it:** --debug, --verbose, ログモード
 
 ### `/tmp/glance.log`
@@ -166,7 +167,7 @@ dismiss 等）。通常運転中は **黙る**（"Result が出ない" のなら
 
 ### `Log.line` / `Log.debug`
 `GlanceCore` の 2 関数。`Log.line` は常時 ON、`Log.debug` は `GLANCE_DEBUG`
-gate。家風と同形（facet / wand / perch / eventfx と揃える）。
+gate。家風と同形（facet / wand / perch と揃える）。
 - **Don't call it:** info / verbose / 通常ログ
 
 ---
@@ -179,6 +180,6 @@ gate。家風と同形（facet / wand / perch / eventfx と揃える）。
   `--markdown`）はその表記を維持する。
 - 定義は **1〜2 文** に収める。動作の詳細は設定セクションやソース
   ファイルへリンクし、ここで説明し直さない。
-- pipeline で連携する他リポジトリ（eventfx / wand）の用語と衝突しないか
+- pipeline で連携する他リポジトリ（wand など）の用語と衝突しないか
   確認する。衝突する場合は **glance 側で別名を取る** か `Don't call it:`
   に並べて棲み分けを明記する。
