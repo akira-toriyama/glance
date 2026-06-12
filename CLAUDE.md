@@ -22,17 +22,17 @@ some-cmd | glance --title "Result" --at 800 500
 
 設計の核は「**フォーカスを奪わない**」こと。`.nonactivatingPanel` style
 mask + `becomesKeyOnlyIfNeeded` で、元のアプリでキー入力を続けながら
-panel を眺められる UX (PopClip toolbar 的)。
+panel を眺められる UX（ツールバー風で、ソースアプリのフォーカスを保つ）。
 
 連携想定:
 
 ```
-eventfx (検知) → wand (menu でアクション選択) → shell action (curl/jq 等) → glance (表示)
+トリガー（検知） → wand (menu でアクション選択) → shell action (curl/jq 等) → glance (表示)
 ```
 
 ## Architecture (SwiftPM 3-layer)
 
-`facet` / `chord` / `perch` / `eventfx` と同じヘキサゴナル分割:
+`facet` / `chord` / `perch` と同じヘキサゴナル分割:
 
 ```
 Sources/
@@ -123,7 +123,7 @@ glance --help                 print help, exit
   入力を覗ける
 
 **verbose の唯一のトリガは `GLANCE_DEBUG` 環境変数** (`--debug` flag は無い —
-facet/chord/wand/eventfx/perch 家系と統一)。通常 pipe 起動では set されず静か。
+facet/chord/wand/perch 家系と統一)。通常 pipe 起動では set されず静か。
 `Log` (always-on `Log.line` + gated `Log.debug`) は `GlanceCore` に在る。
 
 ## Conventions
@@ -158,7 +158,6 @@ glance の流儀は以下と意図的に揃えている (家風):
 - [facet](https://github.com/akira-toriyama/facet) — workspace + window manager
 - [chord](https://github.com/akira-toriyama/chord) — hotkey daemon
 - [perch](https://github.com/akira-toriyama/perch) — keyboard-driven UI navigator
-- [eventfx](https://github.com/akira-toriyama/eventfx) — AX event broker
 - [wand](https://github.com/akira-toriyama/wand) — gesture + launcher
 
 共通: SwiftPM 3-layer / README EN/JA 並行 / `run.sh` `stop.sh` /
@@ -167,8 +166,8 @@ CLI / commit-msg hook / 5-workflow CI / Homebrew tap 外出し。
 
 連携先 (glance 観点):
 
-- [eventfx](https://github.com/akira-toriyama/eventfx) — `text_selected`
-  event の trigger。`$EVENTFX_SELECTION` を pipeline に流す。
+- トリガー（chord のホットキーやテキスト選択監視など） — 選択テキストを
+  `$SELECTION` として pipeline に流す。
 - [wand](https://github.com/akira-toriyama/wand) — `stroke --show-menu` で
   action 選択 UI を出す。クリックされた item の action-cmd が glance を
   呼ぶ pipeline 末端。

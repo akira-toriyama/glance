@@ -9,7 +9,7 @@ shows ready-to-paste compositions with the rest of the family.
 
 | Tool | Role | What it provides to `glance` |
 |------|------|------|
-| [`eventfx`](https://github.com/akira-toriyama/eventfx) | AX event broker | `text_selected` event → `$EVENTFX_SELECTION`, `$EVENTFX_CURSOR_X/Y` |
+| upstream trigger | text-selection observer | selection text → `$SELECTION`, `$CURSOR_X/Y` |
 | [`wand`](https://github.com/akira-toriyama/wand) | gesture + launcher | menu of actions, runs the chosen shell pipeline |
 | [`chord`](https://github.com/akira-toriyama/chord) | hotkey daemon | starts the pipeline from a key combo |
 | [`perch`](https://github.com/akira-toriyama/perch) | keyboard-driven UI navigator | not directly upstream; coexists |
@@ -19,19 +19,20 @@ shows ready-to-paste compositions with the rest of the family.
 
 ### A. Translate selection → show near cursor
 
-`eventfx` watches for `text_selected`; pipes the selection to DeepL;
-shows the translation right at the cursor without stealing focus.
+An upstream trigger (a chord hotkey, or a text-selection observer)
+captures the selection, pipes it to DeepL, and shows the translation
+right at the cursor without stealing focus.
 
 ```sh
-# wired up as an eventfx action, or run from wand menu
-printf '%s' "$EVENTFX_SELECTION" |
+# wired up as a trigger action, or run from wand menu
+printf '%s' "$SELECTION" |
   curl -s -X POST 'https://api-free.deepl.com/v2/translate' \
        -H "Authorization: DeepL-Auth-Key $DEEPL_KEY" \
        --data-urlencode 'text@-' \
        -d 'target_lang=JA' |
   jq -r '.translations[0].text' |
   glance --title 'DeepL' \
-         --at "$EVENTFX_CURSOR_X" "$EVENTFX_CURSOR_Y" \
+         --at "$CURSOR_X" "$CURSOR_Y" \
          --auto-close 6
 ```
 
@@ -50,15 +51,15 @@ echo "$LONG_TEXT" |
 ```
 
 Useful inside `wand` as an "AI 要約" menu item — same pipeline, but
-the input is `$EVENTFX_SELECTION` or the contents of a focused file.
+the input is `$SELECTION` or the contents of a focused file.
 
 ### C. Definition / dictionary lookup
 
 ```sh
-word="$EVENTFX_SELECTION"
+word="$SELECTION"
 curl -s "https://api.dictionaryapi.dev/api/v2/entries/en/$word" |
   jq -r '.[0].meanings[] | "**\(.partOfSpeech)** — \(.definitions[0].definition)"' |
-  glance --markdown --title "Define: $word" --at "$EVENTFX_CURSOR_X" "$EVENTFX_CURSOR_Y"
+  glance --markdown --title "Define: $word" --at "$CURSOR_X" "$CURSOR_Y"
 ```
 
 ### D. Quick result toast (HUD mode)
@@ -68,14 +69,14 @@ right: borderless, rounded, no titlebar — like a macOS notification.
 
 ```sh
 # hash the selection
-printf '%s' "$EVENTFX_SELECTION" | sha256sum | awk '{print $1}' |
+printf '%s' "$SELECTION" | sha256sum | awk '{print $1}' |
   glance --hud --auto-close 3 --copy
 
 # date / time stamp
 date | glance --hud --auto-close 2
 
 # math result
-echo "scale=4; $EVENTFX_SELECTION" | bc |
+echo "scale=4; $SELECTION" | bc |
   glance --hud --auto-close 4 --copy
 ```
 
@@ -113,7 +114,7 @@ nothing.
 ```
 ┌───────────────────────────────────────────────────────────┐
 │ trigger                                                   │
-│   eventfx (text_selected) / chord (hotkey) / wand (menu)  │
+│   text selection / chord (hotkey) / wand (menu)           │
 └──────────────────────────┬────────────────────────────────┘
                            │ stdin
 ┌──────────────────────────▼────────────────────────────────┐

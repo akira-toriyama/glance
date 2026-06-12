@@ -6,7 +6,7 @@
 #   ./scripts/build-icon.sh quote.bubble          # custom
 #
 # Palette: amber accent on near-black rounded square. Distinct from
-# the family siblings (eventfx=teal, wand=indigo, chord=...) so the
+# the family siblings (wand=indigo, chord=...) so the
 # icon stack stays visually distinguishable.
 set -e
 cd "$(dirname "$0")/.."
