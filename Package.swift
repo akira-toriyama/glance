@@ -47,10 +47,9 @@ let package = Package(
         // Highlightr `--theme` code-syntax theme stays orthogonal +
         // untouched.
         //
-        // Local dev uses `.package(path: "../sill")` for atomic sill+glance
-        // editing; swap to the url + pinned tag below at push time.
-        .package(path: "../sill"),
-        // .package(url: "https://github.com/akira-toriyama/sill", .upToNextMinor(from: "0.5.0")),
+        // Local dev: swap to `.package(path: "../sill")` for atomic
+        // sill+glance editing; the committed form pins the published tag.
+        .package(url: "https://github.com/akira-toriyama/sill", .upToNextMinor(from: "0.5.0")),
     ],
     targets: [
         .target(name: "GlanceCore"),
