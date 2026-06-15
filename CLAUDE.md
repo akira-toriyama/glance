@@ -102,9 +102,22 @@ some-cmd | glance              run viewer (read stdin, show panel)
                   --auto-close <s>  dismiss after N seconds
                   --width <px>   panel width  (default 380)
                   --height <px>  panel height (default 240)
-glance --version              print version, exit
-glance --help                 print help, exit
+glance --version / -V         print version, exit
+glance --help / -h            print help, exit
 ```
+
+**atelier Phase 3 (family CLI 文法統一): glance は OUT.** data-processing
+(stdin→panel one-shot・domain 0 / verb 1) ゆえ yabai 式 domain-verb 文法の
+対象外。横断 sub-規約には**既に適合済み**で追加の移行は不要:
+
+- canonical-only — 短縮 alias は family carve-out の `-h` / `-V` のみ（他に
+  bare-flag alias なし）。`--at <x> <y>` は既に空白区切り。
+- unknown-flag は loud に `ArgsParseError.unknownFlag` → stderr ＋ **exit 2**
+  （no silent fallback）。
+- **死守の例外**: 空 stdin は **silent exit 0**（pipeline で上流が空を返した
+  時に空 panel を出さない＝Unix filter 尾。`Main.swift` の guard）。
+
+正典は [cli-grammar.md](https://github.com/akira-toriyama/atelier/blob/main/docs/cli-grammar.md)。
 
 ## Debugging
 
