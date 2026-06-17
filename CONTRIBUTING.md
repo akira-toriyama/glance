@@ -117,7 +117,7 @@ PR titles must follow the same format — `commit-lint.yml` checks it.
 |---|---|
 | **No network** | Pipeline upstream owns HTTP. `--copy` is the only side-effect glance allows itself. |
 | **No Accessibility permission** | Avoid the "grant glance accessibility" friction. |
-| **macOS 13+ only** | `.nonactivatingPanel` + `NSAttributedString(markdown:)` + `presentationIntent` lineage we lean on. |
+| **macOS 13+ only** | `.nonactivatingPanel` + the swift-markdown / Highlightr custom renderer (`MarkdownRenderer`) lineage we lean on. |
 | **Single panel per process** | One-shot. If you want multi-panel UX, build a different tool. |
 | **No editing** | View only. stdin is source of truth. |
 
