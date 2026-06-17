@@ -5,11 +5,19 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  # Cancel in-flight builds on the same PR / branch when a new push
+  # arrives — only the latest commit matters for the required check.
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: macos-15
+    # Bounded so a hung `swift build` can't burn 6 h of free macOS minutes.
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Show toolchain
         run: swift --version
