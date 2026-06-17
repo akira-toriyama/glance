@@ -107,17 +107,22 @@ glance の **唯一の UI surface**。`NSPanel` に `.nonactivatingPanel` style 
 - **Don't call it:** floating window, tool window, hud, フロートウィンドウ
 
 ### markdown rendering
-`--markdown` 指定時の表示処理。`NSAttributedString(markdown:options:)`
-を使い、失敗時は **plain text に fallback**。`labelColor` で上書きしてダーク
-モードに追従。
-- **Don't call it:** rich text, html render, リッチテキスト
+`--markdown` 指定時の表示処理。**swift-markdown** で AST にパースし、自前の
+`MarkdownRenderer`（`MarkupVisitor`）で `NSAttributedString` に落とす（tables /
+task list / strikethrough が標準 API では描画されないため自前実装）。色は
+sill 由来の `Style`（`foreground` / `tertiary` / `primary` / `border`）で与え、
+code block は `Highlightr` で syntax highlight（highlighter が落ちた / 言語
+未知なら plain mono に fallback）。
+- コード: [`Sources/GlanceAdapterMacOS/MarkdownRenderer.swift`](../Sources/GlanceAdapterMacOS/MarkdownRenderer.swift)
+- **Don't call it:** rich text, html render, `NSAttributedString(markdown:)`, リッチテキスト
 
 ### dismiss paths
 panel が閉じる **4 経路**:
 (1) panel 外クリック（global mouse monitor）/
-(2) Esc（panel が transient に key になった時の local key monitor）/
+(2) Esc / ⌘W（panel が transient に key になった時の local key monitor）/
 (3) `--auto-close N` の N 秒タイマー /
 (4) 標準の panel close ボタン。
+`--sticky` は (1)(3) を無効化し、`--hud` は borderless で (4) を持たない。
 - **Don't call it:** close routes, exit paths, 終了経路（パイプライン全体の
   exit と紛らわしいため）
 
@@ -140,8 +145,44 @@ glance の **唯一の入力経路**。HTTP 呼び出し等は **上流の責務
 panel の top-left anchor を **Cocoa 座標**（Y-up、全スクリーン）で指定する
 フラグ。トリガー（chord のホットキーやテキスト選択監視など）が渡す座標と
 直接整合する
-（wand `stroke --show-menu --at` 契約と同形）。
+（wand `tome --open --at` 契約と同形）。
 - **Don't call it:** position, location, coords, 座標指定（フラグ名固定）
+
+### `--copy`
+表示と**同時に**本文を pbcopy する CLI フラグ。表示が主役なので panel を
+出した後に clipboard へ書き込む。翻訳結果を後で paste するフロー向け。
+- コード: [`Sources/GlanceApp/Main.swift`](../Sources/GlanceApp/Main.swift) / `ViewerPanel.present(copy:)`
+- **Don't call it:** clipboard mode, pbcopy flag, コピーモード
+
+### `--font-size <pt>`
+本文ベースフォントサイズ（既定 16pt）。markdown の heading は倍率指定なので、
+相対階層を保ったまま全体が拡縮する。
+- **Don't call it:** text size, scale, 文字サイズ（フラグ名固定）
+
+### `--theme <name>`
+コードブロックの Highlightr テーマ名（既定 `atom-one-dark`）。`nord` /
+`monokai-sublime` / `vs2015` / `github-dark` など highlight.js 標準テーマ。
+未知名は Highlightr が黙って no-op（前テーマのまま）。
+- **Don't call it:** color scheme, syntax theme, 配色
+
+### `--no-highlight`
+syntax highlight を一切しないフラグ。code block は全部 plain mono になり、
+`Highlightr`（JSCore）起動を skip するので最速。
+- **Don't call it:** plain mode, raw code, ハイライト無効
+
+### `--hud`
+borderless HUD モード。title bar / close button / resize を外し、角丸の
+「通知っぽい」矩形にする。短い toast 表示向け。`--sticky` とは排他。
+- コード: [`Sources/GlanceAdapterMacOS/ViewerPanel.swift`](../Sources/GlanceAdapterMacOS/ViewerPanel.swift)（`.borderless` style mask）
+- **Don't call it:** toast, notification, banner, トースト, 通知バナー
+
+### `--sticky`
+「panel 外クリックでは閉じない」厳格モード。**title bar の X ボタン**が主
+dismiss 経路で、click-outside と `--auto-close` を無効化する。Esc / ⌘W は
+誤操作で詰まらないよう安全弁として残す。長時間 reference 用。`--hud`（X
+ボタン無し）/ `--auto-close`（矛盾）とは排他で `parseArgs` がエラーにする。
+- コード: [`Sources/GlanceCore/Args.swift`](../Sources/GlanceCore/Args.swift)（post-parse validation）
+- **Don't call it:** pinned, persistent panel, modal, 固定, ピン留め
 
 ### one-shot CLI
 glance のライフサイクル契約。**1 プロセス = 1 panel**、stdin 読み終わったら
@@ -183,3 +224,8 @@ gate。家風と同形（facet / wand / perch と揃える）。
 - pipeline で連携する他リポジトリ（wand など）の用語と衝突しないか
   確認する。衝突する場合は **glance 側で別名を取る** か `Don't call it:`
   に並べて棲み分けを明記する。
+- **コードと剥離させない**。CLI フラグ / モジュール名 / 環境変数を追加・改名・
+  削除する PR では、このファイルの該当エントリも **同一 PR で** 追従させる
+  （概念を持つ新フラグはエントリ追加、改名は正規名差し替え＋旧名を
+  `Don't call it:` へ、削除はエントリ削除）。コードが正・用語集が後追いで
+  ズレた状態は drift として扱う。
