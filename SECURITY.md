@@ -14,14 +14,18 @@ them:
 - **stdin から受け取った内容をそのまま native panel に表示する**。pipeline
   の上流が信用できないコンテンツ (untrusted URL の curl 出力など) を
   流す可能性がある場合、`--markdown` モードでの `[link](javascript:...)`
-  等のリスクは Foundation の `NSAttributedString(markdown:)` の安全性に
-  依存する (現状 `javascript:` URL は実行されないが、新しい macOS で
-  挙動が変わる可能性は留意)。
+  等のリスクは、自前の markdown renderer (`MarkdownRenderer.visitLink`) が
+  `.link` 属性として埋め込んだ URL を、選択可能な `NSTextView` がクリック時に
+  どう開くか (AppKit / NSWorkspace のリンク処理) に依存する。Foundation の
+  `NSAttributedString(markdown:)` は現在使っていない (現状 `javascript:` URL は
+  実行されないが、新しい macOS で挙動が変わる可能性は留意)。
   glance renders stdin verbatim. If upstream content is untrusted, the
-  safety of `--markdown` rendering depends on Foundation's
-  `NSAttributedString(markdown:)`. Current macOS doesn't execute
-  `javascript:` URLs from markdown links, but future behavior is not
-  guaranteed.
+  safety of `--markdown` rendering depends on how AppKit's selectable
+  `NSTextView` opens the `.link`-attributed URLs that glance's own
+  markdown renderer (`MarkdownRenderer.visitLink`) embeds — not on
+  Foundation's `NSAttributedString(markdown:)`, which glance no longer
+  uses. Current macOS doesn't execute `javascript:` URLs from markdown
+  links, but future behavior is not guaranteed.
 
 - **Accessibility 権限は不要**。glance 自身は OS の Accessibility API を
   使わない。トリガー元（chord のホットキーやテキスト選択監視など）が

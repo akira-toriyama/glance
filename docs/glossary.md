@@ -32,7 +32,7 @@ glance は **pipeline の "結果表示端"**。連携の典型形は以下:
 ```mermaid
 flowchart LR
   TRIGGER["トリガー<br/>(検知)"]
-  WAND["wand<br/>--show-menu (action 選択)"]
+  WAND["wand<br/>tome --open (action 選択)"]
   SHELL["shell action<br/>(curl / jq 等)"]
   GLANCE["glance<br/>(表示端)"]
   USER["ユーザー"]
