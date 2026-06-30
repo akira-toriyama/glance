@@ -26,7 +26,7 @@ Add panel screenshots to docs/img/ and reference them here, e.g.:
 
 > See also: [CONTRIBUTING.md](CONTRIBUTING.md) ·
 > [Pipeline cookbook](docs/pipeline.md) ·
-> [Commit convention](docs/commit-convention.md)
+> [Commit convention](https://github.com/akira-toriyama/.github/blob/main/CONTRIBUTING.md)
 
 ## Highlights
 

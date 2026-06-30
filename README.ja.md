@@ -25,7 +25,7 @@ docs/img/ に panel の screenshot を置いて、ここで参照する想定。
 
 > 関連 doc: [CONTRIBUTING.md](CONTRIBUTING.md) ·
 > [Pipeline cookbook](docs/pipeline.md) ·
-> [Commit convention](docs/commit-convention.md)
+> [Commit convention](https://github.com/akira-toriyama/.github/blob/main/CONTRIBUTING.md)
 
 ## 特徴
 
