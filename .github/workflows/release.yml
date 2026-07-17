@@ -28,6 +28,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          # git-cliff only reads local git history; the draft is written via the
+          # gh API token, never git push — drop the checkout token. t-yaxa
+          persist-credentials: false
 
       - name: Install git-cliff
         uses: taiki-e/install-action@c93ccc03e00cd0e08e494f5fd058a6c55a6a1907 # v2
