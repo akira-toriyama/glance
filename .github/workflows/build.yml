@@ -23,6 +23,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Build-and-test only: build.sh and swift test never invoke git —
+          # drop the persisted checkout token. t-yaxa
+          persist-credentials: false
 
       - name: Show toolchain
         run: swift --version
