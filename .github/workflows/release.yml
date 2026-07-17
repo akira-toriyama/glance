@@ -45,8 +45,16 @@ jobs:
           # 先頭に v が付くことがある。後段の `tag="v$NEXT"` と二重化する
           # ので、ここで剥がして純粋な semver にする。
           NEXT="${NEXT#v}"
-          if [ -z "$NEXT" ] || [ "$NEXT" = "0.0.0" ]; then
-            echo "no version bump from recent commits — nothing to release"
+          # bump 対象の commit が無いとき git-cliff は「現行版」をそのまま返す
+          # （空でも 0.0.0 でもない）。だから直近 tag と比べる必要がある。
+          # `0.0.0` と比べていた頃はこの枝が永久に不発で、version を動かさない
+          # push（fleet-sync の :robot: 等）のたびに tag="v$NEXT" が公開済みの
+          # tag に解決され、下の `gh release edit --draft` が **公開済み release を
+          # draft に引き戻して**いた。akira-toriyama/.github の release.yml@v1 は
+          # 元々 `$last` と比較しており、こちらがその実装に揃える。
+          LAST="$(git tag --sort=-v:refname | head -n1)"
+          if [ -z "$NEXT" ] || [ "v$NEXT" = "$LAST" ]; then
+            echo "no version bump from recent commits — nothing to release (next=v$NEXT, last=${LAST:-<none>})"
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -89,6 +97,18 @@ jobs:
         run: |
           tag="v$NEXT"
           if gh release view "$tag" >/dev/null 2>&1; then
+            # Never touch an already-PUBLISHED release. `gh release view` succeeds
+            # for published releases too, so without this the edit below would set
+            # draft=true on a shipped release — de-listing it, moving GitHub's
+            # "Latest" back to the previous version, and leaving its tag and the
+            # Homebrew formula pointing at a release nobody can see. The skip guard
+            # above is what stops us getting here, so this is belt-and-braces: it
+            # guards the irreversible-feeling half of a bug that was invisible for
+            # months precisely because everything downstream stayed green.
+            if [ "$(gh release view "$tag" --json isDraft --jq .isDraft)" != "true" ]; then
+              echo "::notice::$tag is already published — leaving it alone."
+              exit 0
+            fi
             gh release edit "$tag" --notes "$NOTES" --draft
             gh release upload "$tag" bin/glance bin/glance.sha256 --clobber
           else
