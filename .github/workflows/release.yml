@@ -1,9 +1,18 @@
 name: Release
 
-# Rolling-draft model. Push to main → git-cliff computes the next version
-# and creates/updates a single DRAFT release with the built `glance` binary.
-# Publish manually in the GitHub UI to create the tag and trigger
-# update-tap.yml. Mirrors facet / chord / perch.
+# Thin caller of glyph's reusable rolling-DRAFT release (binary mode). A push
+# to main makes `glyph release` compute the next version and the notes from
+# each merged PR's individual (pre-squash) commits — gitmoji-driven and
+# squash-safe — and create/update a single DRAFT release (no tag until you
+# Publish in the UI). The verdict + draft logic and the binary that runs it
+# ship together from akira-toriyama/glyph at ONE concrete tag (never a moving
+# ref); this file supplies only glance's binary name + install prose. glance
+# ships a bare `bin/glance` binary (built by ./build.sh), not an .app bundle,
+# so it pins the reusable's `binary:` input — the first binary-mode caller.
+# The git-cliff era config (cliff.toml) is gone — the classification table
+# lives inside the glyph binary (`glyph rules`). The old inline workflow's
+# published-release protections are subsumed: glyph writes drafts only, and
+# the published floor guards the tag space.
 on:
   push:
     branches: [main]
@@ -23,95 +32,23 @@ permissions:
 
 jobs:
   release:
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          # git-cliff only reads local git history; the draft is written via the
-          # gh API token, never git push — drop the checkout token. t-yaxa
-          persist-credentials: false
+    uses: akira-toriyama/glyph/.github/workflows/release.yml@v0.8.0
+    with:
+      binary: glance
+      dry-run: ${{ github.event.inputs.dry_run == 'true' }}
+      install-notes: |
+        ## Install
 
-      - name: Install git-cliff
-        uses: taiki-e/install-action@c93ccc03e00cd0e08e494f5fd058a6c55a6a1907 # v2
-        with:
-          tool: git-cliff@2
+        **Homebrew:**
 
-      - name: Compute next version
-        id: cliff
-        run: |
-          NEXT=$(git cliff --bumped-version 2>/dev/null || echo "")
-          # git-cliff は cliff.toml `tag_pattern = "v[0-9]*"` の影響で
-          # 先頭に v が付くことがある。後段の `tag="v$NEXT"` と二重化する
-          # ので、ここで剥がして純粋な semver にする。
-          NEXT="${NEXT#v}"
-          # bump 対象の commit が無いとき git-cliff は「現行版」をそのまま返す
-          # （空でも 0.0.0 でもない）。だから直近 tag と比べる必要がある。
-          # `0.0.0` と比べていた頃はこの枝が永久に不発で、version を動かさない
-          # push（fleet-sync の :robot: 等）のたびに tag="v$NEXT" が公開済みの
-          # tag に解決され、下の `gh release edit --draft` が **公開済み release を
-          # draft に引き戻して**いた。akira-toriyama/.github の release.yml@v1 は
-          # 元々 `$last` と比較しており、こちらがその実装に揃える。
-          LAST="$(git tag --sort=-v:refname | head -n1)"
-          if [ -z "$NEXT" ] || [ "v$NEXT" = "$LAST" ]; then
-            echo "no version bump from recent commits — nothing to release (next=v$NEXT, last=${LAST:-<none>})"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "next=$NEXT" >> "$GITHUB_OUTPUT"
-          {
-            echo "notes<<__EOF__"
-            git cliff --unreleased --tag "$NEXT" --strip header
-            echo
-            echo "## Install"
-            echo
-            echo "**Homebrew:**"
-            echo
-            echo '```sh'
-            echo "brew install akira-toriyama/tap/glance"
-            echo '```'
-            echo
-            echo "**Prebuilt (\`glance\` below):** ad-hoc signed (not notarized)."
-            echo "macOS quarantines downloads, so on first use:"
-            echo
-            echo '```sh'
-            echo 'xattr -d com.apple.quarantine ./glance'
-            echo 'chmod +x ./glance'
-            echo '```'
-            echo "__EOF__"
-          } >> "$GITHUB_OUTPUT"
+        ```sh
+        brew install akira-toriyama/tap/glance
+        ```
 
-      - name: Build artifacts
-        if: steps.cliff.outputs.skip != 'true'
-        run: |
-          ./build.sh
-          cd bin
-          shasum -a 256 glance > glance.sha256
+        **Prebuilt (`glance` below):** ad-hoc signed (not notarized).
+        macOS quarantines downloads, so on first use:
 
-      - name: Create / update draft release
-        if: steps.cliff.outputs.skip != 'true' && inputs.dry_run != true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NEXT: ${{ steps.cliff.outputs.next }}
-          NOTES: ${{ steps.cliff.outputs.notes }}
-        run: |
-          tag="v$NEXT"
-          if gh release view "$tag" >/dev/null 2>&1; then
-            # Never touch an already-PUBLISHED release. `gh release view` succeeds
-            # for published releases too, so without this the edit below would set
-            # draft=true on a shipped release — de-listing it, moving GitHub's
-            # "Latest" back to the previous version, and leaving its tag and the
-            # Homebrew formula pointing at a release nobody can see. The skip guard
-            # above is what stops us getting here, so this is belt-and-braces: it
-            # guards the irreversible-feeling half of a bug that was invisible for
-            # months precisely because everything downstream stayed green.
-            if [ "$(gh release view "$tag" --json isDraft --jq .isDraft)" != "true" ]; then
-              echo "::notice::$tag is already published — leaving it alone."
-              exit 0
-            fi
-            gh release edit "$tag" --notes "$NOTES" --draft
-            gh release upload "$tag" bin/glance bin/glance.sha256 --clobber
-          else
-            gh release create "$tag" --draft --title "$tag" --notes "$NOTES" \
-              bin/glance bin/glance.sha256
-          fi
+        ```sh
+        xattr -d com.apple.quarantine ./glance
+        chmod +x ./glance
+        ```

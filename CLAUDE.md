@@ -174,7 +174,7 @@ facet/chord/wand/perch 家系と統一)。通常 pipe 起動では set されず
 | `commit-lint.yml` | commit / PR title が convention に従うか (reusable に委譲) |
 | `glossary.yml` | `docs/glossary.md` から glossary SPA を生成し GitHub Pages へ deploy (PR は build のみ) |
 | `taplo.yml` | `**/*.toml` の TOML lint (reusable に委譲) |
-| `release.yml` | git-cliff (`cliff.toml`) でリリースノート生成 (rolling draft) |
+| `release.yml` | glyph の reusable (binary mode) に委譲 — semver/notes を gitmoji から導出し rolling draft を upsert |
 | `update-tap.yml` | release publish 後に `akira-toriyama/homebrew-tap` を自動 bump |
 
 `update-tap.yml` は `HOMEBREW_TAP_TOKEN` (fine-grained PAT) が必要。
