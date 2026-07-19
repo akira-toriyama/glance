@@ -141,8 +141,10 @@ Current deps:
 
 ## Release flow
 
-- `release.yml` runs git-cliff on push to generate a **rolling draft
-  release** with categorised notes.
+- `release.yml` delegates to [glyph](https://github.com/akira-toriyama/glyph)'s
+  reusable rolling-draft release on push: the next version and the categorised
+  notes are derived from each merged PR's individual (pre-squash) commits,
+  and a single **rolling draft release** is upserted with the built binary.
 - A human publishes the draft when ready.
 - `update-tap.yml` then auto-bumps the
   [Homebrew tap](https://github.com/akira-toriyama/homebrew-tap)
