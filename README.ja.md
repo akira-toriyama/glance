@@ -216,8 +216,8 @@ swift test                 # XCTest 実行 (GlanceCoreTests)
     (Apache-2) — CommonMark + GFM パーサ
   - [Highlightr](https://github.com/raspu/Highlightr)
     (MIT) — highlight.js + JavaScriptCore wrapper
-- 推奨コミット規約: gitmoji + Conventional Commits (`scripts/hooks/commit-msg`
-  で検証。有効化: `git config core.hooksPath scripts/hooks`)
+- コミット規約: gitmoji 駆動
+  (`glyph hook install` が検証用の commit-msg hook を書く)
 - リリース: `release.yml` が rolling draft を生成。GitHub UI で Publish →
   `update-tap.yml` が tap formula を自動 bump
 

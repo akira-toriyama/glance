@@ -93,10 +93,10 @@ skip locally.
   :memo: docs(readme): add screenshot section
 ```
 
-Enable the pre-commit hook to catch malformed messages locally:
+Install the commit-msg hook to catch malformed messages locally (once per clone):
 
 ```sh
-git config core.hooksPath scripts/hooks
+glyph hook install
 ```
 
 PR titles must follow the same format — `commit-lint.yml` checks it.

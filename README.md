@@ -229,9 +229,8 @@ swift test                 # run XCTest suite (GlanceCoreTests)
     (Apache-2) — CommonMark + GFM parser
   - [Highlightr](https://github.com/raspu/Highlightr)
     (MIT) — highlight.js + JavaScriptCore wrapper
-- Suggested commit convention: gitmoji + Conventional Commits
-  (`scripts/hooks/commit-msg` validates; enable with
-  `git config core.hooksPath scripts/hooks`)
+- Commit convention: gitmoji-driven
+  (`glyph hook install` writes a local commit-msg hook that validates it)
 - Release: `release.yml` → rolling draft. Publish in GitHub UI →
   `update-tap.yml` bumps tap formula automatically
 

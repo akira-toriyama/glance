@@ -30,5 +30,4 @@ jobs:
             build.sh \
             install.sh \
             run.sh \
-            stop.sh \
-            scripts/hooks/commit-msg
+            stop.sh
