@@ -47,7 +47,7 @@ permissions:
 
 jobs:
   bump:
-    uses: akira-toriyama/.github/.github/workflows/update-tap.yml@v1
+    uses: akira-toriyama/.github/.github/workflows/update-tap.yml@v2
     with:
       formula: glance
       tag: ${{ github.event.inputs.tag || '' }}
