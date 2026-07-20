@@ -155,9 +155,10 @@ facet/chord/wand/perch 家系と統一)。通常 pipe 起動では set されず
 
 ## Conventions
 
-- **コミット**: gitmoji + Conventional Commits。
-  `scripts/hooks/commit-msg` がチェック。有効化:
-  `git config core.hooksPath scripts/hooks`
+- **コミット**: gitmoji 駆動 — `<:gitmoji:>[(<scope>)][!] <subject>`。
+  先頭の `:code:` が type（Conventional の `<type>` 語は退役。legacy な
+  `<type>(scope):` token は lint が accept-and-ignore するので旧履歴は通る）。
+  機械正本は `glyph rules`。ローカル hook は `glyph hook install`
 - **PR**: タイトルも同じ形式 (`commit-lint.yml` がチェック)。
 - **コメント**: WHY を書く。WHAT は識別子で語る。多段の docstring は禁止。
 - **依存**: SwiftPM 経由で追加可。ライセンスは MIT / Apache-2 互換に
