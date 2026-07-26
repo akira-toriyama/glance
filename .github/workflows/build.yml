@@ -18,7 +18,10 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-15
+    # macos-26: glance's floor is macOS 26 (t-tbar) via sill's Palette /
+    # PaletteKit, and `swift test` runs minos-26 binaries a macos-15 host
+    # cannot load. The 26 runner defaults to Xcode 26.x.
+    runs-on: macos-26
     # Bounded so a hung `swift build` can't burn 6 h of free macOS minutes.
     timeout-minutes: 20
     steps:
@@ -28,14 +31,13 @@ jobs:
           # drop the persisted checkout token. t-yaxa
           persist-credentials: false
 
-      - name: Show toolchain
-        run: swift --version
-
-      - name: Build (release)
-        run: ./build.sh
-
-      - name: Test
-        run: swift test
+      # Shared Swift build (setup-xcode + SPM cache + build + test), same as
+      # facet / perch / sill. Replaces the hand-rolled steps this repo used to
+      # carry: those had no setup-xcode, so the toolchain was whatever the
+      # runner image defaulted to.
+      - uses: akira-toriyama/.github/actions/swift-build@v2
+        with:
+          build-cmd: ./build.sh
 
       - name: Sanity check binary
         run: file bin/glance && test -x bin/glance && ./bin/glance --version

@@ -67,8 +67,9 @@ LaunchAgent 不要)。Homebrew は `akira-toriyama/tap/glance` を提供予定�
 
 ## Architecture (制約)
 
-- **macOS 13+ (Ventura+)**。`.nonactivatingPanel` + `swift-markdown` / `Highlightr`
-  レンダリングの動作前提。
+- **macOS 26+ (Tahoe+)**。sill の `Palette` / `PaletteKit` が macOS 26 floor を持つ
+  (t-tbar) ため。`.nonactivatingPanel` + `swift-markdown` / `Highlightr`
+  レンダリングもこの floor の内側で動く。
 - **one-shot CLI**。stdin 読み終わったら NSApp.run() → user dismiss →
   NSApp.terminate(nil) → プロセス終了。
 - **focus を奪わない**: `.nonactivatingPanel` style mask、
