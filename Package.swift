@@ -53,7 +53,7 @@ let package = Package(
         //
         // Local dev: swap to `.package(path: "../sill")` for atomic
         // sill+glance editing; the committed form pins the published tag.
-        .package(url: "https://github.com/akira-toriyama/sill", .upToNextMinor(from: "4.1.0")),
+        .package(url: "https://github.com/akira-toriyama/sill", .upToNextMinor(from: "5.0.0")),
     ],
     targets: [
         .target(name: "GlanceCore"),
