@@ -1,6 +1,6 @@
 # glance
 
-![Platform](https://img.shields.io/badge/platform-macOS%2013%2B-blue)
+![Platform](https://img.shields.io/badge/platform-macOS%2026%2B-blue)
 ![Swift](https://img.shields.io/badge/Swift-orange?logo=swift&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -98,7 +98,7 @@ flowchart LR
 
 ## Requirements
 
-- macOS 13+ (Ventura)
+- macOS 26+ (Tahoe)
 - Xcode Command Line Tools (`swift`)
 - No special permissions
 

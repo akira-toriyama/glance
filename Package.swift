@@ -18,7 +18,11 @@ import PackageDescription
 
 let package = Package(
     name: "glance",
-    platforms: [.macOS(.v13)],
+    // macOS 26 floor (t-tbar): sill's Palette / PaletteKit require macOS 26
+    // since sill v2.0.0, so a .v13 consumer no longer links. The string form
+    // is the only spelling both toolchains parse — CLT PackageDescription 6.1
+    // has no .v26 case.
+    platforms: [.macOS("26.0")],
     products: [
         .executable(name: "glance", targets: ["GlanceApp"]),
         .library(name: "GlanceCore", targets: ["GlanceCore"]),
@@ -49,7 +53,7 @@ let package = Package(
         //
         // Local dev: swap to `.package(path: "../sill")` for atomic
         // sill+glance editing; the committed form pins the published tag.
-        .package(url: "https://github.com/akira-toriyama/sill", .upToNextMinor(from: "1.7.0")),
+        .package(url: "https://github.com/akira-toriyama/sill", .upToNextMinor(from: "5.0.0")),
     ],
     targets: [
         .target(name: "GlanceCore"),

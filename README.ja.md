@@ -90,7 +90,7 @@ flowchart LR
 
 ## 要件
 
-- macOS 13 以降 (Ventura+)
+- macOS 26 以降 (Tahoe+)
 - Xcode Command Line Tools (`swift`)
 - 特別な権限不要
 

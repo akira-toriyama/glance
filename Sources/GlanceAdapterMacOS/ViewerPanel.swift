@@ -42,11 +42,15 @@ public final class ViewerPanel {
     /// テーマ切替は持たない — glance は一過性の result-view popover であって
     /// テーマ対象面ではない。Highlightr の `--theme` (コード構文) はこれと
     /// 直交で不可侵 (別軸・271 themes は触らない)。
-    private static let chromeTheme = "catppuccin-mocha"
+    /// 型付きの `Theme` で持つ — 生文字列を `paletteFor` に渡す形は untyped domain
+    /// に対して TOTAL で、テーマが catalog から消えても無言で `terminal` に落ちる
+    /// (それが sill v1.36.0 の `catppuccin-latte` 削除で wand を壊した経路)。
+    /// case は宣言なので、消えればコンパイルエラーで気づける。
+    private static let chromeTheme = Theme.catppuccinMocha
     private static func chromePalette() -> ResolvedPalette {
         // forceDark: dark テーマなので NSTextView 選択 / find bar / scroller 等
         // の system chrome を dark に固定する (旧 .darkAqua 強制の後継)。
-        resolve(paletteFor(chromeTheme), forceDark: true)
+        resolve(chromeTheme.spec, forceDark: true)
     }
 
     /// HUD モードの角丸半径。macOS の通知バナーと同程度。
