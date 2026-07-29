@@ -53,7 +53,13 @@ let package = Package(
         //
         // Local dev: swap to `.package(path: "../sill")` for atomic
         // sill+glance editing; the committed form pins the published tag.
-        .package(url: "https://github.com/akira-toriyama/sill", .upToNextMinor(from: "5.0.0")),
+        //
+        // Floor 6.0.0 (sill t-0j0z): `paletteFor` went FAILABLE and the
+        // widget bridges went SwiftUI-native — glance feels neither, because
+        // its one theme reference is already the typed `Theme.catppuccinMocha`
+        // (a catalog cut would break the build here, not silently repaint)
+        // and it links no ThemeKitUI. Measured: zero source changes.
+        .package(url: "https://github.com/akira-toriyama/sill", .upToNextMinor(from: "6.0.0")),
     ],
     targets: [
         .target(name: "GlanceCore"),
