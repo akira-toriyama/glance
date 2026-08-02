@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 このリポジトリで作業する Claude / エージェント向けの構造・制約・流儀。
-人間の README は [README.md](README.md) / [README.ja.md](README.ja.md)。
+人間の README は [README.md](README.md)（英語のみ — fleet の [doc-consistency-policy](https://github.com/akira-toriyama/.github/blob/main/docs/doc-consistency-policy.md)）。
 
 ## 用語
 

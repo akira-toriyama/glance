@@ -3,8 +3,6 @@
 Welcome — this is a small, focused project, so the bar is "your change
 should still feel like *glance*". The points below help that.
 
-> 日本語の説明が必要な場合は [README.ja.md](README.ja.md) を参照。
-
 ## What this is
 
 `glance` is a one-shot macOS CLI that displays stdin in a
@@ -104,8 +102,7 @@ PR titles must follow the same format — `commit-lint.yml` checks it.
 ## Pull requests
 
 - Keep PRs focused — "one theme, one PR" is the norm here.
-- Update `README.md` and `README.ja.md` together when CLI / behaviour
-  changes (the two are intentionally kept in sync).
+- Update `README.md` when CLI / behaviour changes.
 - Add tests when reasonable. Visual / panel behavior is hard to unit
   test — focus on the rendering / parsing contracts where assertions
   bite.
