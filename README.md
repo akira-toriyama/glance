@@ -4,8 +4,6 @@
 ![Swift](https://img.shields.io/badge/Swift-orange?logo=swift&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**English** · [日本語](README.ja.md)
-
 A macOS one-shot CLI that **displays stdin in a non-activating NSPanel**.
 The panel does NOT steal keyboard focus from the source app — you can keep
 typing while the result is visible. Use as the result-display end of
