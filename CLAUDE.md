@@ -193,8 +193,10 @@ family). A normal pipe launch never sets it and stays quiet. `Log`
 | `release.yml` | delegates to glyph's reusable (binary mode) — semver/notes derived from gitmoji, rolling draft upserted |
 | `update-tap.yml` | auto-bump `akira-toriyama/homebrew-tap` after a release publishes |
 
-`update-tap.yml` needs `HOMEBREW_TAP_TOKEN` (a fine-grained PAT). Unset =
-a safe no-op skip.
+`update-tap.yml` needs `HOMEBREW_TAP_DEPLOY_KEY` (the private half of the
+tap's write deploy key; fleet-sync fans it out — t-6bhz). With neither it nor
+the deprecated `HOMEBREW_TAP_TOKEN` set, the run fails loudly with the
+remediation — there is no silent skip.
 
 ## References (house-style sources)
 
