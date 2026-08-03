@@ -5,8 +5,8 @@ name: update-tap
 # (idempotent, repo-qualified first-match url+sha256 seds, stale-`revision`
 # drop, no-downgrade guard, pull-rebase retry) and its docs live there; this
 # file only declares the trigger and the formula name. Cross-repo write needs
-# the repo secret HOMEBREW_TAP_TOKEN (a fine-grained PAT with Contents: Read &
-# write on homebrew-tap).
+# the repo secret HOMEBREW_TAP_DEPLOY_KEY (the private half of homebrew-tap's
+# write deploy key; fleet-sync fans it out — t-6bhz).
 #
 # Replaces a custom bumper that predated the reusable. Everything it did is
 # subsumed: its latest-fetch is the reusable's own fallback branch, and
@@ -52,4 +52,4 @@ jobs:
       formula: glance
       tag: ${{ github.event.inputs.tag || '' }}
     secrets:
-      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}

@@ -179,8 +179,8 @@ facet/chord/wand/perch 家系と統一)。通常 pipe 起動では set されず
 | `release.yml` | glyph の reusable (binary mode) に委譲 — semver/notes を gitmoji から導出し rolling draft を upsert |
 | `update-tap.yml` | release publish 後に `akira-toriyama/homebrew-tap` を自動 bump |
 
-`update-tap.yml` は `HOMEBREW_TAP_TOKEN` (fine-grained PAT) が必要。
-未設定なら no-op で安全に skip。
+`update-tap.yml` は `HOMEBREW_TAP_DEPLOY_KEY`（tap の write deploy key の
+秘密鍵側・fleet-sync が配布）が必要。未設定なら no-op で安全に skip。
 
 ## References (家風ソース)
 
