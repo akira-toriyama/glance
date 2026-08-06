@@ -3,8 +3,6 @@ import XCTest
 
 final class ArgsTests: XCTestCase {
 
-    // MARK: parse — basic flags
-
     func testEmptyArgsReturnsViewerWithDefaults() throws {
         let result = try parseArgs([])
         guard case .viewer(let a) = result else {
@@ -73,8 +71,6 @@ final class ArgsTests: XCTestCase {
         XCTAssertFalse(a.copy)
     }
 
-    // MARK: --font-size / --theme / --no-highlight / --hud
-
     func testFontSizeFlag() throws {
         guard case .viewer(let a) = try parseArgs(
             ["--font-size", "18"]) else {
@@ -140,8 +136,6 @@ final class ArgsTests: XCTestCase {
         XCTAssertFalse(a.hud)
     }
 
-    // MARK: --sticky
-
     func testStickyFlag() throws {
         guard case .viewer(let a) = try parseArgs(["--sticky"]) else {
             return XCTFail("expected .viewer")
@@ -200,8 +194,6 @@ final class ArgsTests: XCTestCase {
         XCTAssertEqual(a.atY, 20)
         XCTAssertTrue(a.markdown)
     }
-
-    // MARK: parse — error cases
 
     func testMissingTitleValue() {
         XCTAssertThrowsError(try parseArgs(["--title"])) { error in

@@ -92,8 +92,6 @@ public struct MarkdownRenderer {
     /// glance は単一スレッド UI なので nonisolated(unsafe) で安全。
     nonisolated(unsafe) fileprivate static var syntaxHighlighter = SyntaxHighlighter()
 
-    /// CLI 引数を反映して highlighter を作り直す。`--no-highlight` 時は何も
-    /// しない wrapper を入れる。
     public static func configureSyntaxHighlighter(theme: String?,
                                                   enabled: Bool) {
         if !enabled {
@@ -121,14 +119,10 @@ public struct MarkdownRenderer {
     }
 }
 
-// MARK: - Visitor
-
 private struct Visitor: MarkupVisitor {
     typealias Result = NSAttributedString
 
     let style: MarkdownRenderer.Style
-
-    // MARK: font helpers
 
     private var bodyFont: NSFont {
         .systemFont(ofSize: style.baseFontSize)
@@ -152,8 +146,6 @@ private struct Visitor: MarkupVisitor {
         ]
     }
 
-    // MARK: default / unknown
-
     mutating func defaultVisit(_ markup: Markup) -> NSAttributedString {
         let out = NSMutableAttributedString()
         for child in markup.children {
@@ -161,8 +153,6 @@ private struct Visitor: MarkupVisitor {
         }
         return out
     }
-
-    // MARK: inline
 
     mutating func visitText(_ text: Text) -> NSAttributedString {
         NSAttributedString(string: text.plainText, attributes: bodyAttrs())
@@ -239,8 +229,6 @@ private struct Visitor: MarkupVisitor {
         NSAttributedString(string: inline.rawHTML, attributes: bodyAttrs())
     }
 
-    // MARK: block
-
     mutating func visitParagraph(_ paragraph: Paragraph) -> NSAttributedString {
         let inner = NSMutableAttributedString()
         for child in paragraph.children { inner.append(visit(child)) }
@@ -310,7 +298,6 @@ private struct Visitor: MarkupVisitor {
         block.setWidth(6, type: .absoluteValueType, for: .margin, edge: .minX)
         block.setWidth(6, type: .absoluteValueType, for: .margin, edge: .maxX)
 
-        // code paragraph style (本体)。
         let codeP = NSMutableParagraphStyle()
         // コードは body より行間を詰めた方がコードっぽく密に見える。
         codeP.lineSpacing = 2
@@ -323,7 +310,7 @@ private struct Visitor: MarkupVisitor {
 
         let result = NSMutableAttributedString()
 
-        // (B) 言語ラベル: cell 内最初の段落として右寄せの dim text で言語名を
+        // 言語ラベル: cell 内最初の段落として右寄せの dim text で言語名を
         // 表示 (VSCode の "右上 chip" の代替。同じ textBlock なので背景は
         // 連続したまま)。
         if let lang = codeBlock.language?.trimmingCharacters(in: .whitespaces),
@@ -345,9 +332,6 @@ private struct Visitor: MarkupVisitor {
             result.append(labelAttr)
         }
 
-        // Highlightr で syntax highlight。fence 言語指定 (```swift 等) があれば
-        // それを使い、無ければ auto-detect。highlighter が落ちた / 言語が未知の
-        // 場合は plain mono に fallback。
         let highlighted = MarkdownRenderer.syntaxHighlighter
             .highlight(code, language: codeBlock.language)
 
@@ -529,8 +513,6 @@ private struct Visitor: MarkupVisitor {
             ])
     }
 
-    // MARK: table
-
     /// GFM table を NSTextTable + NSTextTableBlock で "本物の罫線" に。
     /// mono-space 擬似罫線だと CJK の wide 幅で列が崩れるのを根本回避。
     /// header 行は薄い背景 + bold、各セルは細い罫線 + padding で sticky な
@@ -555,11 +537,9 @@ private struct Visitor: MarkupVisitor {
         textTable.setWidth(1.2, type: .absoluteValueType, for: .border)
 
         let out = NSMutableAttributedString()
-        // header
         out.append(renderTableRow(head, columns: columns,
                                   rowIndex: 0, isHeader: true,
                                   table: textTable))
-        // body
         for (rowOffset, row) in bodyRows.enumerated() {
             out.append(renderTableRow(row, columns: columns,
                                       rowIndex: rowOffset + 1,
@@ -622,8 +602,6 @@ private struct Visitor: MarkupVisitor {
         return block
     }
 
-    // MARK: helpers
-
     private func applyTrait(_ trait: NSFontTraitMask, to s: NSMutableAttributedString) {
         let r = NSRange(location: 0, length: s.length)
         s.enumerateAttribute(.font, in: r) { value, range, _ in
@@ -633,8 +611,6 @@ private struct Visitor: MarkupVisitor {
         }
     }
 }
-
-// MARK: - SyntaxHighlighter
 
 /// Highlightr (highlight.js + JavaScriptCore) を 1 instance だけ抱える
 /// 薄い wrapper。theme は CLI から差し替え可能 (`--theme`)、`--no-highlight`
