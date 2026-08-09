@@ -206,14 +206,10 @@ public final class ViewerPanel {
         // 上書きすると blockquote の muted 等の per-run 色が消えるので触らない。
 
         scroll.documentView = textView
-        // 階層: panel.contentView = root (solid dark, 角丸 in HUD) → scroll
-        // → textView。
         root.addSubview(scroll)
         panel.contentView = root
     }
 
-    /// markdown=true は swift-markdown でパースして MarkdownRenderer に投げる。
-    /// 非 markdown は plain text を line-spacing 付き attributed に。
     private static func renderAttributed(text: String,
                                          markdown: Bool,
                                          fontSize: CGFloat,

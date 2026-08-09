@@ -70,8 +70,6 @@ public enum ArgsAction {
     case viewer(Args)
 }
 
-/// argv (CommandLine.arguments を drop した先頭以外) を解釈して
-/// `ArgsAction` を返す。`--help` / `--version` は早期に分岐する。
 public func parseArgs(_ argv: [String]) throws -> ArgsAction {
     var args = Args()
     var i = 0
@@ -105,9 +103,6 @@ public func parseArgs(_ argv: [String]) throws -> ArgsAction {
             args.markdown = true
             i += 1
         case "--copy":
-            // 表示と同時に pbcopy するフラグ。翻訳結果を後で paste する
-            // ようなフローで使う。表示は副作用ではなく主役なので、
-            // panel を出した後に clipboard へ書き込む順。
             args.copy = true
             i += 1
         case "--auto-close":
@@ -138,8 +133,6 @@ public func parseArgs(_ argv: [String]) throws -> ArgsAction {
             args.height = n
             i += 2
         case "--font-size":
-            // 本文 pt サイズ。markdown 階層 (heading scales) は倍率なので
-            // 同じ relative hierarchy を保ったまま全体が拡縮する。
             guard i + 1 < argv.count else {
                 throw ArgsParseError.missingValue(a)
             }
@@ -164,14 +157,12 @@ public func parseArgs(_ argv: [String]) throws -> ArgsAction {
             args.hud = true
             i += 1
         case "--sticky":
-            // X ボタン以外では閉じない厳格モード。
             args.sticky = true
             i += 1
         default:
             throw ArgsParseError.unknownFlag(a)
         }
     }
-    // --sticky 系の整合性チェック (post-parse validation)。
     if args.sticky && args.hud {
         throw ArgsParseError.invalidCombination(
             "--sticky requires the title bar close button; --hud is " +

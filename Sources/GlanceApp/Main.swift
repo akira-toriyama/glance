@@ -60,7 +60,6 @@ enum GlanceApp {
         app.run()
     }
 
-    /// stdin から全部読む。pipe か redirect で text 流入を期待。
     static func readStdin() -> String {
         let data = FileHandle.standardInput.readDataToEndOfFile()
         return String(data: data, encoding: .utf8) ?? ""

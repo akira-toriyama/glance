@@ -32,8 +32,6 @@ final class MarkdownRendererTests: XCTestCase {
         MarkdownRenderer(style: Self.testStyle).render(text)
     }
 
-    // MARK: heading / inline
-
     func testPlainParagraphPreservesText() {
         let out = render("hello world")
         XCTAssertTrue(out.string.contains("hello world"))
@@ -42,7 +40,6 @@ final class MarkdownRendererTests: XCTestCase {
     func testHeadingUsesBoldFont() {
         let out = render("# Title")
         XCTAssertTrue(out.string.contains("Title"))
-        // 先頭 char の font が bold trait 持ちか確認。
         let f = out.attribute(.font, at: 0, effectiveRange: nil) as? NSFont
         XCTAssertNotNil(f)
         XCTAssertTrue(f!.fontDescriptor.symbolicTraits.contains(.bold))
@@ -66,8 +63,6 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertNotNil(f)
         XCTAssertTrue(f!.fontDescriptor.symbolicTraits.contains(.monoSpace))
     }
-
-    // MARK: GFM extensions
 
     func testTaskListUsesCheckboxGlyphs() {
         let out = render("""
@@ -103,8 +98,6 @@ final class MarkdownRendererTests: XCTestCase {
         }
     }
 
-    // MARK: code block
-
     func testCodeBlockBodyHasMonospaceFont() {
         let out = render("```\nlet x = 1\n```")
         let nsString = out.string as NSString
@@ -130,8 +123,6 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(out.string.contains("plain code"))
     }
 
-    // MARK: link
-
     func testLinkRunHasURLAttribute() {
         let out = render("[Apple](https://apple.com)")
         let nsString = out.string as NSString
@@ -141,8 +132,7 @@ final class MarkdownRendererTests: XCTestCase {
     }
 
     func testLinkRunHasPrimaryForeground() {
-        // link は sill `primary` ロール色 (full authorship)。旧 controlAccent
-        // から theme 由来色へ移行済み。
+        // link は sill `primary` ロール色 (full authorship)。
         let out = render("[link](https://x.com)")
         let nsString = out.string as NSString
         let r = nsString.range(of: "link")
@@ -159,9 +149,6 @@ final class MarkdownRendererTests: XCTestCase {
                                   at: r.location, effectiveRange: nil) as? Int
         XCTAssertEqual(style, NSUnderlineStyle.single.rawValue)
     }
-
-    // MARK: heading hierarchy
-    // (h1/h2 underline tests live with the feature in PR #2 / more-flags.)
 
     func testHeadingLevelDrivesFontSize() {
         // h1 のフォントサイズは h3 より大きいはず。具体値は scales 配列に
@@ -181,8 +168,6 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertGreaterThan(h1f!.pointSize, h3f!.pointSize)
     }
 
-    // MARK: lists
-
     func testUnorderedListUsesBulletGlyph() {
         let out = render("- one\n- two")
         XCTAssertTrue(out.string.contains("•"),
@@ -194,8 +179,6 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(out.string.contains("1."))
         XCTAssertTrue(out.string.contains("2."))
     }
-
-    // MARK: empty / edge cases
 
     func testEmptyInputProducesEmptyOutput() {
         let out = render("")
@@ -209,8 +192,6 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(out.string.contains("\n"))
     }
 
-    // MARK: blockquote
-
     func testBlockQuoteUsesTertiaryColor() {
         // blockquote 本文は sill `tertiary` (foreground@0.55) で描く。旧
         // secondaryLabelColor → 当初 muted だったが mocha の muted は #1E1E2E
@@ -222,8 +203,6 @@ final class MarkdownRendererTests: XCTestCase {
                                at: r.location, effectiveRange: nil) as? NSColor
         XCTAssertEqual(fg, Self.testStyle.tertiary)
     }
-
-    // MARK: thematic break
 
     func testThematicBreakRendersHorizontalRule() {
         let out = render("before\n\n---\n\nafter")
