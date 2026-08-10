@@ -1,13 +1,14 @@
 #!/bin/sh
-# glance を verbose でローカル起動する dev ループ。glance は daemon を
-# 持たないので、他アプリの `./run.sh`(常駐アプリを <APP>_DEBUG 付きで起動)
-# に相当するのは GLANCE_DEBUG=1 で demo を起動する事 ＝ 無印 ./run.sh。
-# 本番配置 (~/.local/bin) は ./install.sh に分離 (= ./run.sh --install)。
+# The dev loop launching glance locally, verbose. glance has no daemon, so
+# the equivalent of other apps' `./run.sh` (launch the resident app with
+# <APP>_DEBUG) is launching the demo with GLANCE_DEBUG=1 = bare ./run.sh.
+# Production placement (~/.local/bin) is split into ./install.sh
+# (= ./run.sh --install).
 #
-#   ./run.sh               build + verbose demo 起動 (GLANCE_DEBUG=1、panel + /tmp/glance.log)
-#   ./run.sh --demo / -d   同上 (明示)
-#   ./run.sh --install/-i  ~/.local/bin に配置 (= ./install.sh、静音)
-#   ./run.sh --help        使い方
+#   ./run.sh               build + verbose demo (GLANCE_DEBUG=1, panel + /tmp/glance.log)
+#   ./run.sh --demo / -d   same, explicit
+#   ./run.sh --install/-i  place into ~/.local/bin (= ./install.sh, quiet)
+#   ./run.sh --help        usage
 set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
@@ -15,18 +16,19 @@ cd "$DIR"
 case "${1:-}" in
     ""|-d|--demo)
         ./build.sh
-        # GFM + syntax highlight + table + blockquote + task list を
-        # ひとまとめに、glance の今の能力が一画面で確認できる demo。
-        # auto-close を入れないので user が明示的に dismiss するまで残る。
-        # dev loop なので GLANCE_DEBUG=1 付き — 引数 / stdin / panel frame /
-        # dismiss の trace が stderr + /tmp/glance.log に出る (通常 install は静か)。
-        # NOTE: 単引用符内の \(name) 等は意図的に shell expansion させない
-        # markdown 内の文字列なので SC2016 を disable。
+        # A demo showing glance's current abilities on one screen — GFM +
+        # syntax highlight + table + blockquote + task list together.
+        # No auto-close, so it stays until the user dismisses explicitly.
+        # It is the dev loop, so GLANCE_DEBUG=1 — traces of args / stdin /
+        # panel frame / dismiss go to stderr + /tmp/glance.log (a normal
+        # install stays quiet).
+        # NOTE: \(name) etc. inside single quotes deliberately avoid shell
+        # expansion — they are markdown-internal strings, so SC2016 is off.
         # shellcheck disable=SC2016
         printf '%s' '# glance demo
 
-`some-cmd` の結果を non-activating panel に表示します。**focus** は
-奪わないので、元のアプリで打鍵し続けられます。
+Shows `some-cmd`'s output in a non-activating panel. **Focus** is never
+stolen, so you can keep typing in the original app.
 
 ## syntax highlight
 
@@ -55,16 +57,16 @@ def fibonacci(n: int) -> list[int]:
 | task lists | ✅ |
 | ~~deprecated~~ | n/a |
 
-- [x] swift-markdown 採用
-- [x] Highlightr で syntax highlight
-- [ ] あなたが Esc で閉じる
+- [x] swift-markdown adopted
+- [x] syntax highlighting via Highlightr
+- [ ] you close this with Esc
 
-> blockquote: 左バー + muted color。
-> 段落跨ぎでも継続するか確認。
+> blockquote: left bar + muted color.
+> Checking it continues across paragraphs.
 
 ---
 
-Esc / ⌘W / panel 外クリックで dismiss。
+Dismiss with Esc / ⌘W / a click outside the panel.
 ' | GLANCE_DEBUG=1 ./bin/glance --title "glance demo" --markdown --width 540
         ;;
     -i|--install)

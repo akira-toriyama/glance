@@ -1,23 +1,25 @@
 import AppKit
 
-/// NSLayoutManager subclass。`.backgroundColor` attribute が指定された range
-/// (= inline code) を角丸の "pill" として描画する。NSTextTable cell の bg は
-/// `paragraphStyle.textBlocks` 経由で別系統で描かれるためここを通らないので
-/// 影響しない (code block / blockquote / table はそのまま矩形)。
+/// An NSLayoutManager subclass drawing any range carrying a
+/// `.backgroundColor` attribute (= inline code) as a rounded "pill".
+/// NSTextTable cell backgrounds are drawn by a separate path via
+/// `paragraphStyle.textBlocks` and never come through here, so they are
+/// unaffected (code blocks / blockquotes / tables stay rectangular).
 ///
-/// TextKit 1 (NSLayoutManager) のみ。NSTextView を `init(frame:textContainer:)`
-/// で明示構築すると TextKit 1 が選択され、本クラスの override が効く。
+/// TextKit 1 (NSLayoutManager) only. Constructing the NSTextView explicitly
+/// with `init(frame:textContainer:)` selects TextKit 1, making this class's
+/// overrides effective.
 final class GlanceLayoutManager: NSLayoutManager {
 
-    /// pill の角丸半径。文字 1 文字分くらいの浅い rounding。
+    /// The pill's corner radius — shallow rounding, about one character.
     static let cornerRadius: CGFloat = 4
 
-    /// 文字幅の左右に追加する pill padding。`backgroundColor` attr は
-    /// 文字の advance 範囲しか持たないので、視覚的に呼吸を入れるために
-    /// 左右へ少し膨らませる。
+    /// Horizontal pill padding beyond the glyph advance. The
+    /// `backgroundColor` attr only spans the characters' advance range, so
+    /// bulge slightly left and right for visual breathing room.
     static let horizontalInset: CGFloat = -3
 
-    /// 縦方向の膨らみ。デフォルト 0 (行高ぴったり)。
+    /// Vertical bulge. Default 0 (exactly line height).
     static let verticalInset: CGFloat = 0
 
     override func fillBackgroundRectArray(

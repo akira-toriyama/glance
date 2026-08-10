@@ -1,7 +1,7 @@
 #!/bin/sh
-# Kill any glance instances that have stuck panels open. glance は
-# one-shot CLI なので通常は user dismiss で自滅するが、稀に panel が
-# 残り続けるときに使う。Safe to run when nothing is running (no-op)。
+# Kill any glance instances that have stuck panels open. glance is a
+# one-shot CLI that normally exits on user dismiss; use this on the rare
+# occasion a panel lingers. Safe to run when nothing is running (no-op).
 #
 #   ./stop.sh
 set -e
