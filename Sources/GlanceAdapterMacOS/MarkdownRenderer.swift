@@ -2,45 +2,47 @@ import AppKit
 import Highlightr
 import Markdown
 
-/// swift-markdown の AST を AppKit の `NSAttributedString` に落とす renderer。
+/// The renderer lowering a swift-markdown AST into an AppKit
+/// `NSAttributedString`.
 ///
-/// 以前は `NSAttributedString(markdown:)` を使っていたが、tables / task list /
-/// strikethrough / footnote が描画されない制約があったため自前 visitor に
-/// 置換。typography は `Style` で外から差し込めるので、ViewerPanel の constants
-/// と同期させて使う。
+/// It used `NSAttributedString(markdown:)` before, but tables / task lists /
+/// strikethrough / footnotes never rendered under that constraint, so a
+/// hand-rolled visitor replaced it. Typography injects from outside via
+/// `Style`, kept in sync with ViewerPanel's constants.
 public struct MarkdownRenderer {
 
     public struct Style {
         public var baseFontSize: CGFloat
         public var bodyLineSpacing: CGFloat
-        /// 本文 / 見出し / リスト / コード本文 fallback の前景色 (sill `foreground`)。
+        /// Foreground for body / headings / lists / code-body fallback (sill `foreground`).
         public var foreground: NSColor
-        /// 弱めテキスト: blockquote / raw HTML 本文 / コードブロックの言語
-        /// ラベル / 水平線 (sill `tertiary` = foreground@0.55)。mocha の `muted`
-        /// (#6C7086) は #1E1E2E 上で AA 未達 (3.36:1) のため使わず、可読な
-        /// foreground 由来の tertiary (~6.69:1) に寄せる。
+        /// De-emphasized text: blockquotes / raw-HTML bodies / code-block
+        /// language labels / horizontal rules (sill `tertiary` =
+        /// foreground@0.55). mocha's `muted` (#6C7086) misses AA on #1E1E2E
+        /// (3.36:1), so the readable foreground-derived tertiary (~6.69:1)
+        /// is used instead.
         public var tertiary: NSColor
-        /// リンク色 (sill `primary`)。
+        /// Link color (sill `primary`).
         public var primary: NSColor
-        /// table セル内側の細罫 (sill `border`)。
+        /// Thin inner table-cell rules (sill `border`).
         public var border: NSColor
-        /// inline code pill の背景 (sill `ink(.wash, of:.foreground)`)。
+        /// Inline-code pill background (sill `ink(.wash, of:.foreground)`).
         public var inlineCodeBackground: NSColor
-        /// code block の背景 (sill `ink(.subtle, of:.foreground)`)。
+        /// Code-block background (sill `ink(.subtle, of:.foreground)`).
         public var codeBlockBackground: NSColor
-        /// table ヘッダ行の薄い背景 (sill `ink(.subtle, of:.foreground)`)。
+        /// Faint table-header-row background (sill `ink(.subtle, of:.foreground)`).
         public var tableHeaderBackground: NSColor
-        /// table 外周の濃い罫線 (sill `ink(.wash, of:.foreground)`)。
+        /// Dark outer table border (sill `ink(.wash, of:.foreground)`).
         public var tableOuterBorder: NSColor
-        /// blockquote 左バー / GitHub の ▎ 風 (sill `ink(.strong, of:.foreground)`)。
+        /// Blockquote left bar, GitHub's ▎ style (sill `ink(.strong, of:.foreground)`).
         public var blockquoteBar: NSColor
-        /// h1 / h2 下線の subtle な色 (sill `ink(.subtle, of:.foreground)`)。
+        /// The subtle h1 / h2 underline color (sill `ink(.subtle, of:.foreground)`).
         public var headingUnderline: NSColor
         public var codeBlockIndent: CGFloat
         public var blockquoteIndent: CGFloat
         public var listIndent: CGFloat
         public var codeBlockParagraphSpacing: CGFloat
-        /// heading レベル 1..6 のフォント倍率。h1 が大きく、h6 が body と同等。
+        /// Font multipliers for heading levels 1..6. h1 large, h6 equal to body.
         public var headingScales: [CGFloat]
 
         public init(baseFontSize: CGFloat,
@@ -86,10 +88,10 @@ public struct MarkdownRenderer {
         self.style = style
     }
 
-    /// Highlightr instance 共有用。デフォルトは atom-one-dark / highlight 有効。
-    /// `--theme` / `--no-highlight` で書き換える時は ViewerPanel が `configure`
-    /// を呼んで instance ごと差し替える (1 プロセス 1 panel なので race なし)。
-    /// glance は単一スレッド UI なので nonisolated(unsafe) で安全。
+    /// The shared Highlightr instance. Defaults: atom-one-dark, highlighting
+    /// on. For `--theme` / `--no-highlight`, ViewerPanel calls `configure` to
+    /// swap the whole instance (one process, one panel — no race). glance is
+    /// single-threaded UI, so nonisolated(unsafe) is safe.
     nonisolated(unsafe) fileprivate static var syntaxHighlighter = SyntaxHighlighter()
 
     public static func configureSyntaxHighlighter(theme: String?,
@@ -109,8 +111,9 @@ public struct MarkdownRenderer {
         let children = Array(document.children)
         for (index, child) in children.enumerated() {
             out.append(visitor.visit(child))
-            // block 間は単一改行 + paragraphSpacing で視覚的余白を出す
-            // (\n\n だと余白が二重になりがち)。最後の block には付けない。
+            // Between blocks: a single newline + paragraphSpacing provides
+            // the visual gap (\n\n tends to double it). None after the last
+            // block.
             if index < children.count - 1 {
                 out.append(NSAttributedString(string: "\n"))
             }
@@ -213,8 +216,8 @@ private struct Visitor: MarkupVisitor {
     }
 
     mutating func visitImage(_ image: Image) -> NSAttributedString {
-        // 表示は描画しない (panel の中に画像 fetch までは入れない)。代替
-        // テキストか URL を `[image: ...]` で表示。
+        // Not rendered (no image fetching inside the panel). Shows the alt
+        // text or URL as `[image: ...]`.
         var alt = ""
         for child in image.children {
             if let text = child as? Text { alt += text.plainText }
@@ -225,14 +228,14 @@ private struct Visitor: MarkupVisitor {
     }
 
     mutating func visitInlineHTML(_ inline: InlineHTML) -> NSAttributedString {
-        // HTML はそのまま素のテキストで出す (HTML 解釈は scope 外)。
+        // HTML is emitted as plain text (HTML interpretation is out of scope).
         NSAttributedString(string: inline.rawHTML, attributes: bodyAttrs())
     }
 
     mutating func visitParagraph(_ paragraph: Paragraph) -> NSAttributedString {
         let inner = NSMutableAttributedString()
         for child in paragraph.children { inner.append(visit(child)) }
-        // 段落末の改行は呼び出し側 (Document / Blockquote / Listitem) が付ける。
+        // The paragraph-final newline is the caller's job (Document / Blockquote / Listitem).
         return inner
     }
 
@@ -250,8 +253,8 @@ private struct Visitor: MarkupVisitor {
         let p = NSMutableParagraphStyle()
         p.lineSpacing = style.bodyLineSpacing
         p.paragraphSpacingBefore = size * 0.4
-        // heading 直後の本文との間に呼吸を入れる。0.25 だと詰まって見えるので
-        // 0.45 で 1 行分弱の余白を作る。
+        // Breathing room between a heading and the body after it. 0.25 looks
+        // cramped; 0.45 gives just under a line.
         p.paragraphSpacing = size * 0.45
 
         let r = NSRange(location: 0, length: inner.length)
@@ -260,8 +263,8 @@ private struct Visitor: MarkupVisitor {
             .foregroundColor: style.foreground,
             .paragraphStyle: p,
         ], range: r)
-        // h1 / h2 は GitHub 風の下線を引く (.underlineStyle)。subtle な色で
-        // セクション境界を強調する。h3+ は線を引くとうるさいので付けない。
+        // h1 / h2 get a GitHub-style underline (.underlineStyle), a subtle
+        // color emphasizing the section boundary. h3+ would be noisy — none.
         if level <= 2 {
             inner.addAttributes([
                 .underlineStyle: NSUnderlineStyle.single.rawValue,
@@ -275,11 +278,13 @@ private struct Visitor: MarkupVisitor {
         var code = codeBlock.code
         if code.hasSuffix("\n") { code.removeLast() }
 
-        // 背景は 1 セルだけの NSTextTable で囲って段落矩形を描く。
-        //   - `.backgroundColor` attr → 文字の後ろにしか描かれず、行間 gap で
-        //      "行ごとの pill" に千切れる
-        //   - 裸の NSTextBlock → width 未設定で 1 文字幅に折りたたまれる
-        // GFM table で動いている仕組みをそのまま流用する。
+        // The background wraps in a 1-cell NSTextTable to paint a paragraph
+        // rectangle:
+        //   - a `.backgroundColor` attr only paints behind glyphs, tearing
+        //     into "per-line pills" at line gaps
+        //   - a bare NSTextBlock collapses to one character width with no
+        //     width set
+        // Reuses the machinery already working for GFM tables.
         let table = NSTextTable()
         table.numberOfColumns = 1
         table.layoutAlgorithm = .automaticLayoutAlgorithm
@@ -293,16 +298,16 @@ private struct Visitor: MarkupVisitor {
         block.backgroundColor = style.codeBlockBackground
         block.setWidth(12, type: .absoluteValueType, for: .padding)
         block.setWidth(0,  type: .absoluteValueType, for: .border)
-        // 本文との対比で "ブロック" 感を出す左右の外側 margin。上下は
-        // paragraphSpacing が担うのでここは horizontal のみ。
+        // Outer horizontal margins giving the "block" contrast against the
+        // body. Vertical is paragraphSpacing's job — horizontal only here.
         block.setWidth(6, type: .absoluteValueType, for: .margin, edge: .minX)
         block.setWidth(6, type: .absoluteValueType, for: .margin, edge: .maxX)
 
         let codeP = NSMutableParagraphStyle()
-        // コードは body より行間を詰めた方がコードっぽく密に見える。
+        // Tighter line spacing than body reads denser, more code-like.
         codeP.lineSpacing = 2
-        // 長い 1 行は word ではなく char 単位で wrap (code に word 境界の
-        // 概念が薄いので半端な空白で折り返さない)。
+        // Long lines wrap per character, not per word (code has little
+        // notion of word boundaries — don't break at stray spaces).
         codeP.lineBreakMode = .byCharWrapping
         codeP.textBlocks = [block]
         codeP.paragraphSpacing = style.codeBlockParagraphSpacing
@@ -310,17 +315,17 @@ private struct Visitor: MarkupVisitor {
 
         let result = NSMutableAttributedString()
 
-        // 言語ラベル: cell 内最初の段落として右寄せの dim text で言語名を
-        // 表示 (VSCode の "右上 chip" の代替。同じ textBlock なので背景は
-        // 連続したまま)。
+        // The language label: the cell's first paragraph, right-aligned dim
+        // text naming the language (the stand-in for VSCode's top-right
+        // chip; same textBlock, so the background stays continuous).
         if let lang = codeBlock.language?.trimmingCharacters(in: .whitespaces),
            !lang.isEmpty {
             let labelP = NSMutableParagraphStyle()
             labelP.alignment = .right
             labelP.lineSpacing = 0
             labelP.textBlocks = [block]
-            // code 本体の paragraphSpacingBefore が cell 内の縦余白を作るので
-            // label 側では追加しない。
+            // The code body's paragraphSpacingBefore creates the cell's
+            // vertical padding — none added on the label side.
             let labelFont = NSFont.monospacedSystemFont(
                 ofSize: style.baseFontSize * 0.78, weight: .regular)
             let labelAttr = NSAttributedString(string: lang + "\n",
@@ -339,11 +344,11 @@ private struct Visitor: MarkupVisitor {
         if let hl = highlighted {
             codeAttr = NSMutableAttributedString(attributedString: hl)
             let cr = NSRange(location: 0, length: codeAttr.length)
-            // Highlightr が付けた `.backgroundColor` (theme の bg) は textBlock
-            // の bg と二重になって汚いので消す。
+            // Highlightr's own `.backgroundColor` (the theme bg) doubles
+            // dirtily with the textBlock bg — remove it.
             codeAttr.removeAttribute(.backgroundColor, range: cr)
-            // font を SF Mono / baseFontSize に統一しつつ bold / italic 等の
-            // trait は維持。
+            // Unify the font to SF Mono / baseFontSize while keeping bold /
+            // italic traits.
             codeAttr.enumerateAttribute(.font, in: cr) { value, range, _ in
                 let original = (value as? NSFont) ?? monoFont
                 let traits = original.fontDescriptor.symbolicTraits
@@ -358,8 +363,9 @@ private struct Visitor: MarkupVisitor {
                 .foregroundColor: style.foreground,
             ])
         }
-        // セル末は \n でパラグラフ終端 (textBlock の境界)。これが無いと
-        // 後続 block と同じパラグラフになり、cell が閉じない。
+        // The cell ends with \n to terminate the paragraph (the textBlock
+        // boundary). Without it, the next block joins the same paragraph and
+        // the cell never closes.
         codeAttr.append(NSAttributedString(string: "\n"))
         let codeRange = NSRange(location: 0, length: codeAttr.length)
         codeAttr.addAttribute(.paragraphStyle, value: codeP, range: codeRange)
@@ -369,7 +375,7 @@ private struct Visitor: MarkupVisitor {
     }
 
     mutating func visitHTMLBlock(_ html: HTMLBlock) -> NSAttributedString {
-        // raw HTML はそのまま monospace で。HTML レンダリングは scope 外。
+        // Raw HTML stays as-is in monospace. HTML rendering is out of scope.
         let p = bodyParagraph()
         return NSAttributedString(string: html.rawHTML, attributes: [
             .font: monoFont,
@@ -388,10 +394,10 @@ private struct Visitor: MarkupVisitor {
             }
         }
 
-        // GitHub 風の左バー: 1-cell NSTextTable で左 border だけ太く色付き、
-        // 他 edge は border 0。NSTextBlock 単体だと layout が崩れるので table
-        // で囲うのが安定。collapsesBorders=true だと 1-cell 時に border が
-        // 省略されることがあるので false にして確実に描く。
+        // The GitHub-style left bar: a 1-cell NSTextTable with only the left
+        // border thick and colored, other edges 0. A bare NSTextBlock breaks
+        // layout — wrapping in a table is stable. collapsesBorders=true can
+        // omit the border in the 1-cell case, so false to draw reliably.
         let table = NSTextTable()
         table.numberOfColumns = 1
         table.collapsesBorders = false
@@ -404,7 +410,7 @@ private struct Visitor: MarkupVisitor {
         block.setWidth(0, type: .absoluteValueType, for: .border)
         block.setWidth(4, type: .absoluteValueType, for: .border, edge: .minX)
         block.setBorderColor(style.blockquoteBar, for: .minX)
-        // 左バーと本文の隙間 + 上下に呼吸。
+        // The gap between the left bar and the body + vertical breathing.
         block.setWidth(12, type: .absoluteValueType, for: .padding, edge: .minX)
         block.setWidth(4,  type: .absoluteValueType, for: .padding, edge: .maxX)
         block.setWidth(2,  type: .absoluteValueType, for: .padding, edge: .minY)
@@ -414,7 +420,7 @@ private struct Visitor: MarkupVisitor {
         p.lineSpacing = style.bodyLineSpacing
         p.textBlocks = [block]
 
-        // セル末は \n でパラグラフ終端 (cell が閉じる)。
+        // The cell ends with \n to terminate the paragraph (closing it).
         inner.append(NSAttributedString(string: "\n"))
         let r = NSRange(location: 0, length: inner.length)
         inner.addAttribute(.paragraphStyle, value: p, range: r)
@@ -451,7 +457,7 @@ private struct Visitor: MarkupVisitor {
     }
 
     private mutating func listItemPrefix(_ item: ListItem) -> String? {
-        // GFM の task list は ListItem.checkbox に値が入る。
+        // A GFM task list puts its value in ListItem.checkbox.
         switch item.checkbox {
         case .checked:   return "☑  "
         case .unchecked: return "☐  "
@@ -478,14 +484,15 @@ private struct Visitor: MarkupVisitor {
                 out.append(NSAttributedString(string: "\n", attributes: bodyAttrs()))
             }
         }
-        // ListItem 内の全 paragraphStyle に headIndent を適用 (nest 対応)。
+        // Apply headIndent to every paragraphStyle in the ListItem (nesting).
         let r = NSRange(location: 0, length: out.length)
         out.enumerateAttribute(.paragraphStyle, in: r) { value, range, _ in
             let ps = (value as? NSParagraphStyle).flatMap {
                 $0.mutableCopy() as? NSMutableParagraphStyle
             } ?? bodyParagraph()
-            // 既存 indent との合成: 1 段目だけ prefix 分の indent をゼロに
-            // しておく (`p.firstLineHeadIndent = 0`)。それ以外は同じ headIndent。
+            // Composing with existing indent: only the first line zeroes the
+            // prefix's indent (`p.firstLineHeadIndent = 0`); the rest share
+            // the same headIndent.
             if range.location == 0 {
                 ps.firstLineHeadIndent = 0
             } else {
@@ -498,8 +505,9 @@ private struct Visitor: MarkupVisitor {
     }
 
     mutating func visitThematicBreak(_ thematicBreak: ThematicBreak) -> NSAttributedString {
-        // NSTextView での hr は AppKit 標準 attribute では出しにくいので
-        // U+2500 BOX DRAWINGS LIGHT HORIZONTAL を画面幅っぽく敷く。
+        // An hr is hard to produce with stock AppKit attributes in an
+        // NSTextView, so lay U+2500 BOX DRAWINGS LIGHT HORIZONTAL across
+        // roughly the width.
         let p = NSMutableParagraphStyle()
         p.lineSpacing = style.bodyLineSpacing
         p.paragraphSpacing = style.bodyLineSpacing * 2
@@ -513,10 +521,10 @@ private struct Visitor: MarkupVisitor {
             ])
     }
 
-    /// GFM table を NSTextTable + NSTextTableBlock で "本物の罫線" に。
-    /// mono-space 擬似罫線だと CJK の wide 幅で列が崩れるのを根本回避。
-    /// header 行は薄い背景 + bold、各セルは細い罫線 + padding で sticky な
-    /// 見た目になる。
+    /// GFM tables become "real rules" via NSTextTable + NSTextTableBlock —
+    /// fundamentally avoiding the column drift monospace pseudo-rules hit
+    /// with wide CJK glyphs. The header row gets a faint background + bold;
+    /// each cell gets thin rules + padding for a sticky look.
     mutating func visitTable(_ table: Table) -> NSAttributedString {
         let head = Array(table.head.cells)
         let bodyRows: [[Markdown.Table.Cell]] = table.body.rows.map {
@@ -530,9 +538,9 @@ private struct Visitor: MarkupVisitor {
         textTable.layoutAlgorithm = .automaticLayoutAlgorithm
         textTable.collapsesBorders = true
         textTable.hidesEmptyCells = false
-        // 外周だけ濃く太く: collapsesBorders=true なので隣接 border は太い方が
-        // 勝つ。cell 側は 0.5pt subtle、table 側は 1.2pt はっきり → 結果として
-        // 外周だけ濃い枠が出る。
+        // Only the outer frame dark and thick: with collapsesBorders=true the
+        // thicker of adjacent borders wins. Cells are 0.5pt subtle, the table
+        // 1.2pt distinct → only the perimeter reads as a dark frame.
         textTable.setBorderColor(style.tableOuterBorder)
         textTable.setWidth(1.2, type: .absoluteValueType, for: .border)
 
@@ -571,11 +579,11 @@ private struct Visitor: MarkupVisitor {
             if isHeader {
                 applyTrait(.boldFontMask, to: inner)
             }
-            // セル末は改行 = paragraph 終端 (textBlock の境界)。
+            // The cell ends with a newline = paragraph end (textBlock boundary).
             inner.append(NSAttributedString(string: "\n"))
             let r = NSRange(location: 0, length: inner.length)
             inner.addAttribute(.paragraphStyle, value: p, range: r)
-            // 既存 font が無い run (空セル) のために font を敷いておく。
+            // Lay a font down for runs with none (empty cells).
             inner.enumerateAttribute(.font, in: r) { value, range, _ in
                 if value == nil {
                     inner.addAttribute(.font, value: bodyFont, range: range)
@@ -612,10 +620,11 @@ private struct Visitor: MarkupVisitor {
     }
 }
 
-/// Highlightr (highlight.js + JavaScriptCore) を 1 instance だけ抱える
-/// 薄い wrapper。theme は CLI から差し替え可能 (`--theme`)、`--no-highlight`
-/// 時は disabled モードで常に nil を返す (Highlightr 起動も skip)。
-/// MarkupVisitor の要件が非 isolated なので、これも非 isolated にしておく。
+/// A thin wrapper holding exactly one Highlightr (highlight.js +
+/// JavaScriptCore) instance. The theme swaps from the CLI (`--theme`);
+/// `--no-highlight` puts it in disabled mode, always returning nil (and
+/// skipping the Highlightr boot). MarkupVisitor requires non-isolation, so
+/// this stays non-isolated too.
 final class SyntaxHighlighter {
     private let highlightr: Highlightr?
     private let disabled: Bool
@@ -630,9 +639,10 @@ final class SyntaxHighlighter {
         }
     }
 
-    /// 言語 hint があれば指定で highlight。無ければ何もせず nil (auto-detect
-    /// は意図しない highlight を生むので切る)。disabled 時も常に nil。caller
-    /// は nil 時 plain mono に fallback する。
+    /// With a language hint, highlight as specified. Without one, do nothing
+    /// and return nil (auto-detect breeds unintended highlighting — off).
+    /// Disabled mode also always returns nil. The caller falls back to plain
+    /// mono on nil.
     func highlight(_ code: String, language: String?) -> NSAttributedString? {
         guard !disabled else { return nil }
         let lang = (language ?? "").trimmingCharacters(in: .whitespaces)

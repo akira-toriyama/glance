@@ -2,15 +2,15 @@ import AppKit
 import XCTest
 @testable import GlanceAdapterMacOS
 
-/// MarkdownRenderer の最低限の挙動契約。visual 部分は手動確認に頼るが、
-/// AST → attribute mapping のリグレッションは XCTest で押さえる。
+/// MarkdownRenderer's minimal behavior contract. The visual side relies on
+/// manual checks, but AST → attribute-mapping regressions are pinned in XCTest.
 @MainActor
 final class MarkdownRendererTests: XCTestCase {
 
-    /// テスト共通の Style。値は ViewerPanel デフォルト / sill preset と意図的に
-    /// 独立させて、テストが production の色変更で壊れないようにする。各ロールは
-    /// 識別しやすいよう別々の色を割り当て (link=primary / blockquote=tertiary の
-    /// アサートがロール取り違えを検出できる)。
+    /// The tests' shared Style. Values are deliberately independent of the
+    /// ViewerPanel defaults / sill presets so a production color change cannot
+    /// break the tests. Each role gets a distinct color for identification
+    /// (the link=primary / blockquote=tertiary asserts can catch role mix-ups).
     private static let testStyle = MarkdownRenderer.Style(
         baseFontSize: 14,
         bodyLineSpacing: 2,
@@ -116,10 +116,10 @@ final class MarkdownRendererTests: XCTestCase {
     }
 
     func testCodeBlockWithoutLanguageHasNoLabel() {
-        // 言語指定なし → label 出さない (label トリガーは語彙指定の有無のみ)。
+        // No language given → no label (the label triggers only on an explicit vocabulary).
         let out = render("```\nplain code\n```")
-        // "plain code" は含まれるが、独立した "swift" / "python" 等の言語名
-        // トークンは含まれないこと
+        // "plain code" is present, but no standalone language-name token
+        // like "swift" / "python"
         XCTAssertTrue(out.string.contains("plain code"))
     }
 
@@ -132,7 +132,7 @@ final class MarkdownRendererTests: XCTestCase {
     }
 
     func testLinkRunHasPrimaryForeground() {
-        // link は sill `primary` ロール色 (full authorship)。
+        // Links use sill's `primary` role color (full authorship).
         let out = render("[link](https://x.com)")
         let nsString = out.string as NSString
         let r = nsString.range(of: "link")
@@ -151,8 +151,8 @@ final class MarkdownRendererTests: XCTestCase {
     }
 
     func testHeadingLevelDrivesFontSize() {
-        // h1 のフォントサイズは h3 より大きいはず。具体値は scales 配列に
-        // 依存するが、大小関係はテストで固定。
+        // h1's font size should exceed h3's. Exact values depend on the
+        // scales array; the ordering is what the test pins.
         let h1Out = render("# size")
         let h3Out = render("### size")
         let h1NSStr = h1Out.string as NSString
@@ -193,9 +193,10 @@ final class MarkdownRendererTests: XCTestCase {
     }
 
     func testBlockQuoteUsesTertiaryColor() {
-        // blockquote 本文は sill `tertiary` (foreground@0.55) で描く。旧
-        // secondaryLabelColor → 当初 muted だったが mocha の muted は #1E1E2E
-        // 上で AA 未達のため可読な tertiary へ寄せた (敵対レビュー指摘)。
+        // Blockquote bodies draw in sill `tertiary` (foreground@0.55). Was
+        // secondaryLabelColor, then muted — but mocha's muted misses AA on
+        // #1E1E2E, so it moved to the readable tertiary (adversarial-review
+        // finding).
         let out = render("> quoted")
         let nsString = out.string as NSString
         let r = nsString.range(of: "quoted")

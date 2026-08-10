@@ -3,67 +3,73 @@ import GlanceCore
 import Palette
 import PaletteKit
 
-/// 入力テキストを native NSPanel に表示する viewer。**focus を奪わない** ことが
-/// 設計の核 — `.nonactivatingPanel` style + `becomesKeyOnlyIfNeeded` で実現する。
+/// The viewer showing the input text in a native NSPanel. **Never stealing
+/// focus** is the design core — achieved with the `.nonactivatingPanel`
+/// style + `becomesKeyOnlyIfNeeded`.
 ///
-/// 表示後は user の dismiss (Esc / panel 外クリック) で `NSApp.terminate(nil)`
-/// が呼ばれる前提。auto-close 指定があれば一定時間後に自滅。
+/// After showing, the user's dismiss (Esc / click outside the panel) is
+/// expected to call `NSApp.terminate(nil)`. With auto-close set, it
+/// self-destructs after the interval.
 @MainActor
 public final class ViewerPanel {
     private let panel: NSPanel
     private var clickOutsideMonitor: Any?
     private var keyDownMonitor: Any?
-    /// `--sticky`: 外クリックと auto-close を無効化、X ボタンが主 dismiss。
-    /// Esc / ⌘W は安全弁として残す。
+    /// `--sticky`: disables outside-click and auto-close; the X button is
+    /// the primary dismiss. Esc / ⌘W remain as the safety valve.
     private let sticky: Bool
 
-    /// fade-in/out 時間。短すぎると pop に見え、長すぎると mousing と被る。
-    /// macOS 通知センターの 0.15s 前後に合わせる。
+    /// Fade-in/out duration. Too short looks like a pop; too long collides
+    /// with mousing. Matched to Notification Center's ~0.15s.
     private static let fadeDuration: TimeInterval = 0.14
 
-    /// 本文ベースフォントサイズの既定値。`--font-size` 指定時はそちらが勝つ。
-    /// 16pt は macOS 標準 body (13pt) より一回り大きく "ちらっと見る" 用途に
-    /// 適した値。MarkdownRenderer.Style.baseFontSize として渡され、見出し階層は
-    /// そこから倍率で派生する。
+    /// The default base body font size; an explicit `--font-size` wins.
+    /// 16pt is a step above macOS's standard body (13pt) — right for the
+    /// "glance at it" use. Passed as MarkdownRenderer.Style.baseFontSize;
+    /// the heading hierarchy derives from it by multipliers.
     private static let defaultBaseFontSize: CGFloat = 16
 
-    /// 行間 / 余白 / block-level 装飾の constants。MacDown GitHub2.css 等の
-    /// 値を踏襲しつつ、native NSAttributedString に翻訳したもの。
+    /// Line-spacing / padding / block-level decoration constants — following
+    /// MacDown GitHub2.css etc., translated into native NSAttributedString.
     private static let bodyLineSpacing: CGFloat = 4
     private static let bodyTextInset = NSSize(width: 18, height: 14)
     private static let codeBlockIndent: CGFloat = 10
     private static let codeBlockParagraphSpacing: CGFloat = 6
     private static let blockquoteIndent: CGFloat = 16
 
-    /// glance の panel chrome は sill の固定ダーク preset 1 枚から導出する。
-    /// catppuccin-mocha (#1E1E2E ≈ 旧ハードコード #1E1E1E) を選び、bg / 本文 /
-    /// markdown の各ロール色を resolve() の派生レシピ + ink() tier から取る
-    /// (plan atelier・北極星=「facet の theme を真似て」を二度と言わない)。
-    /// テーマ切替は持たない — glance は一過性の result-view popover であって
-    /// テーマ対象面ではない。Highlightr の `--theme` (コード構文) はこれと
-    /// 直交で不可侵 (別軸・271 themes は触らない)。
-    /// 型付きの `Theme` で持つ — 生文字列を `paletteFor` に渡す形は untyped domain
-    /// に対して TOTAL で、テーマが catalog から消えても無言で `terminal` に落ちる
-    /// (それが sill v1.36.0 の `catppuccin-latte` 削除で wand を壊した経路)。
-    /// case は宣言なので、消えればコンパイルエラーで気づける。
+    /// glance's panel chrome derives from ONE fixed dark sill preset.
+    /// catppuccin-mocha (#1E1E2E ≈ the old hardcoded #1E1E1E) is chosen, and
+    /// the bg / body / markdown role colors come from resolve()'s derivation
+    /// recipes + the ink() tiers (plan atelier — the north star: never again
+    /// say "imitate facet's theme"). No theme switching — glance is an
+    /// ephemeral result-view popover, not a theming surface. Highlightr's
+    /// `--theme` (code syntax) is orthogonal and untouchable (a separate
+    /// axis; its 271 themes stay alone).
+    /// Held as a typed `Theme` — passing a raw string to `paletteFor` is
+    /// TOTAL over an untyped domain, silently falling to `terminal` when a
+    /// theme leaves the catalog (exactly how sill v1.36.0's removal of
+    /// `catppuccin-latte` broke wand). A case is a declaration: if it
+    /// disappears, the compile error tells you.
     private static let chromeTheme = Theme.catppuccinMocha
     private static func chromePalette() -> ResolvedPalette {
-        // forceDark: dark テーマなので NSTextView 選択 / find bar / scroller 等
-        // の system chrome を dark に固定する (旧 .darkAqua 強制の後継)。
+        // forceDark: the theme is dark, so pin NSTextView selection / find
+        // bar / scroller system chrome dark (successor of the old .darkAqua
+        // forcing).
         resolve(chromeTheme.spec, forceDark: true)
     }
 
-    /// HUD モードの角丸半径。macOS の通知バナーと同程度。
+    /// The HUD-mode corner radius — about a macOS notification banner's.
     private static let hudCornerRadius: CGFloat = 10
 
     public init(text: String, args: Args) {
         self.sticky = args.sticky
-        // 固定ダーク chrome を sill から 1 回 resolve。以降 panel bg / 本文色 /
-        // markdown ロール色は全てここから導出する。
+        // Resolve the fixed dark chrome from sill once. Panel bg / body
+        // color / markdown role colors all derive from it.
         let palette = Self.chromePalette()
         let chromeBackground = palette.background ?? NSColor(white: 0.118, alpha: 1)
-        // CLI から syntax highlighter を構成。`--no-highlight` 時は Highlightr
-        // 自体を起動しない (JSCore 起動 ~30-100ms を skip)。
+        // Configure the syntax highlighter from the CLI. `--no-highlight`
+        // never boots Highlightr at all (skipping the ~30-100ms JSCore
+        // start).
         MarkdownRenderer.configureSyntaxHighlighter(
             theme: args.theme, enabled: !args.noHighlight)
 
@@ -75,8 +81,8 @@ public final class ViewerPanel {
         let w = args.width.map { CGFloat($0) } ?? defaultWidth
         let requestedH = args.height.map { CGFloat($0) }
 
-        // contentView を組み立ててから text の自然高さで panel 高さを決める。
-        // ユーザが --height で明示した場合はそれを尊重 (clamp なし)。
+        // Assemble the contentView first, then size the panel by the text's
+        // natural height. An explicit --height is honored (no clamp).
         let textInset = Self.bodyTextInset
         let attributed = Self.renderAttributed(
             text: text, markdown: args.markdown, fontSize: fontSize,
@@ -89,7 +95,7 @@ public final class ViewerPanel {
                          height: .greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin, .usesFontLeading]
         ).height
-        // HUD は title bar が無いので slack を引かない。
+        // HUD has no title bar, so no slack subtracted.
         let titleBarSlack: CGFloat = isHud ? 0 : 28
         let naturalPanelHeight = ceil(naturalTextHeight)
             + textInset.height * 2
@@ -99,13 +105,15 @@ public final class ViewerPanel {
         let autoH = min(max(naturalPanelHeight, minH), maxH)
         let h = requestedH ?? autoH
 
-        // アンカーがメニュー左上に来るよう、--at 指定が無ければ画面中央。
-        // 画面端ギリギリの座標を渡されても panel がはみ出ないように clamp する。
+        // The anchor sits at the menu's top-left; without --at, screen
+        // center. Coordinates hugging the screen edge are clamped so the
+        // panel never overflows.
         let frame: NSRect = {
             let baseRect: NSRect
             if let ax = args.atX, let ay = args.atY {
-                // Cocoa 座標 (Y は下から上)。アンカー = panel 左上端、panel は
-                // そこから下方向に展開するので Y - h で実描画 frame を出す。
+                // Cocoa coordinates (Y grows upward). The anchor = the
+                // panel's top-left, and the panel extends downward, so Y - h
+                // yields the actual frame.
                 baseRect = NSRect(x: CGFloat(ax),
                                   y: CGFloat(ay) - h,
                                   width: w,
@@ -141,9 +149,10 @@ public final class ViewerPanel {
                                     .fullScreenAuxiliary,
                                     .transient]
         panel.isMovableByWindowBackground = true
-        // chrome 背景は sill preset (catppuccin-mocha) の background。HUD モード
-        // は panel 自体は透明にして root の rounded layer で角丸付き dark を
-        // 表示する。それ以外は panel が直接 chromeBackground を敷く。
+        // The chrome background is the sill preset's (catppuccin-mocha)
+        // background. In HUD mode the panel itself goes transparent and the
+        // root's rounded layer shows the rounded dark; otherwise the panel
+        // lays chromeBackground directly.
         if palette.forceDarkAqua {
             panel.appearance = NSAppearance(named: .darkAqua)
         }
@@ -155,12 +164,13 @@ public final class ViewerPanel {
             panel.backgroundColor = chromeBackground
         }
         panel.hasShadow = true
-        panel.alphaValue = 0  // fade-in 用 (present で 1 へ補間)
+        panel.alphaValue = 0  // for the fade-in (present interpolates to 1)
 
-        // root: 固定 chrome 背景の CGColor。layer bg は appearance に動的追従
-        // しないので windowBackgroundColor を入れると現在の app appearance
-        // (起動時は light な事が多い) が焼き付いて panel の darkAqua 強制と
-        // 矛盾する。chromeBackground は不透明な concrete 色なので問題ない。
+        // root: the fixed chrome background's CGColor. A layer bg never
+        // tracks appearance dynamically, so windowBackgroundColor would bake
+        // in the current app appearance (often light at launch),
+        // contradicting the panel's darkAqua forcing. chromeBackground is an
+        // opaque concrete color — fine.
         let root = NSView(frame: NSRect(origin: .zero, size: frame.size))
         root.autoresizingMask = [.width, .height]
         root.wantsLayer = true
@@ -170,18 +180,20 @@ public final class ViewerPanel {
             root.layer?.masksToBounds = true
         }
 
-        // contentView: scrollable NSTextView。背景は透明にして root の dark を
-        // 透かす (root が固定 dark なので結果として常に VSCode-like dark bg)。
+        // contentView: a scrollable NSTextView. Its background is
+        // transparent, letting the root's dark show through (the root is
+        // fixed dark, so the result is always a VSCode-like dark bg).
         let scroll = NSScrollView(frame: NSRect(origin: .zero, size: frame.size))
         scroll.hasVerticalScroller = true
         scroll.borderType = .noBorder
         scroll.drawsBackground = false
         scroll.autoresizingMask = [.width, .height]
 
-        // TextKit 1 を明示構築: GlanceLayoutManager (inline code pill 描画用)
-        // を挟むため。`NSTextView(frame:)` だと内部 storage / layout を勝手に
-        // 作るので、自前で stack を組んで textContainer 経由で渡す。NSTextTable
-        // も TextKit 1 で動くので code block / table はそのまま機能する。
+        // Explicit TextKit 1 construction, to insert GlanceLayoutManager
+        // (the inline-code pill painter). `NSTextView(frame:)` builds its own
+        // storage / layout, so assemble the stack by hand and pass it via
+        // textContainer. NSTextTable also runs on TextKit 1, so code blocks /
+        // tables keep working.
         let textStorage = NSTextStorage()
         let layoutManager = GlanceLayoutManager()
         textStorage.addLayoutManager(layoutManager)
@@ -201,9 +213,10 @@ public final class ViewerPanel {
         textView.usesFindBar = true
 
         textView.textStorage?.setAttributedString(attributed)
-        // foregroundColor / typography は renderAttributed 内で確定済み
-        // (各 run に sill ロール色が焼かれている)。ここで textView 全体の色を
-        // 上書きすると blockquote の muted 等の per-run 色が消えるので触らない。
+        // foregroundColor / typography are settled inside renderAttributed
+        // (each run carries its baked sill role color). Overriding the whole
+        // textView's color here would erase per-run colors like the
+        // blockquote's muted — hands off.
 
         scroll.documentView = textView
         root.addSubview(scroll)
@@ -228,11 +241,12 @@ public final class ViewerPanel {
         ])
     }
 
-    /// MarkdownRenderer に渡す Style。typography constants は ViewerPanel、色は
-    /// resolved palette から。中立な white-alpha オーバーレイ群は sill の共有
-    /// `ink` tier（foreground 着色なのでテーマ追従）から導出する:
-    /// wash≈inline pill / 外周罫、subtle≈block・header bg・見出し下線、
-    /// strong≈blockquote バー。
+    /// The Style handed to MarkdownRenderer. Typography constants come from
+    /// ViewerPanel, colors from the resolved palette. The neutral
+    /// white-alpha overlays derive from sill's shared `ink` tiers
+    /// (foreground-tinted, so theme-tracking): wash ≈ inline pill / outer
+    /// rules; subtle ≈ block & header bg, heading underline; strong ≈ the
+    /// blockquote bar.
     private static func rendererStyle(fontSize: CGFloat,
                                       palette: ResolvedPalette) -> MarkdownRenderer.Style {
         MarkdownRenderer.Style(
@@ -253,8 +267,9 @@ public final class ViewerPanel {
             codeBlockParagraphSpacing: codeBlockParagraphSpacing)
     }
 
-    /// `--at` 指定が画面端にめり込んだ場合に visibleFrame 内へ寄せる。
-    /// 上流 pipeline（トリガーの selection 座標）が画面右端に近い時に有効。
+    /// Pulls an `--at` that dug into the screen edge back inside
+    /// visibleFrame. Matters when the upstream pipeline (the trigger's
+    /// selection coordinates) is near the right edge.
     private static func clampToScreen(_ rect: NSRect) -> NSRect {
         guard let screen = NSScreen.main else { return rect }
         let vf = screen.visibleFrame
@@ -266,9 +281,9 @@ public final class ViewerPanel {
         return r
     }
 
-    /// panel を表示。`makeKey` せず order front するので元のアプリの
-    /// キーボードフォーカスは残ったまま。`copy=true` なら表示内容を
-    /// pbcopy にも流す (翻訳結果を後で paste するフロー向け)。
+    /// Show the panel. It orders front without `makeKey`, so the original
+    /// app keeps keyboard focus. With `copy=true` the shown content also
+    /// goes to pbcopy (for the paste-the-translation-later flow).
     public func present(autoCloseSeconds: Double?, copy: Bool = false,
                         copyText: String = "") {
         Log.debug("present: frame=\(panel.frame) sticky=\(sticky) "
@@ -284,8 +299,9 @@ public final class ViewerPanel {
             panel.animator().alphaValue = 1
         }
 
-        // panel 外クリックで close。`--sticky` 時は意図的に張らない。
-        // Esc / ⌘W / X ボタンだけが dismiss 経路になる。
+        // Close on a click outside the panel. Deliberately not installed
+        // under `--sticky` — Esc / ⌘W / the X button become the only
+        // dismiss paths.
         if !sticky {
             clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(
                 matching: [.leftMouseDown, .rightMouseDown,
@@ -294,17 +310,18 @@ public final class ViewerPanel {
             }
         }
 
-        // panel 内のキー入力で Esc / ⌘W を拾う (panel は key になりうる
-        // = becomesKeyOnlyIfNeeded で textView click 時のみ key になる)。
-        // `--sticky` 時もここは残す (キーボード安全弁; ⌘C で copy しても
-        // 閉じない / 誤操作で詰まらない)。
+        // Catch Esc / ⌘W from key input inside the panel (the panel CAN
+        // become key = becomesKeyOnlyIfNeeded makes it key only on a
+        // textView click). Kept under `--sticky` too (the keyboard safety
+        // valve; ⌘C copies without closing / a mis-press can't wedge you).
         keyDownMonitor = NSEvent.addLocalMonitorForEvents(
             matching: .keyDown) { [weak self] ev in
             if ev.keyCode == 53 {   // Esc
                 self?.dismiss()
                 return nil
             }
-            // ⌘W は macOS で "閉じる" の慣習キー。Esc を取り逃した時の保険。
+            // ⌘W is macOS's conventional "close" key — insurance when Esc
+            // slips through.
             if ev.modifierFlags.contains(.command),
                ev.charactersIgnoringModifiers == "w" {
                 self?.dismiss()
@@ -313,8 +330,8 @@ public final class ViewerPanel {
             return ev
         }
 
-        // `--sticky` 時は auto-close を張らない (parseArgs で組合せ自体は
-        // 弾いているので、ここでは念のための double-check)。
+        // No auto-close under `--sticky` (parseArgs already rejects the
+        // combination; this is a just-in-case double-check).
         if !sticky, let seconds = autoCloseSeconds {
             DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
                 [weak self] in self?.dismiss()
@@ -332,7 +349,7 @@ public final class ViewerPanel {
             NSEvent.removeMonitor(m)
             keyDownMonitor = nil
         }
-        // fade-out してから close + terminate。close 即時だと "パッ" と消える。
+        // Fade out, then close + terminate. An immediate close blinks out.
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = Self.fadeDuration
             panel.animator().alphaValue = 0

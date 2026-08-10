@@ -1,6 +1,6 @@
 #!/bin/sh
-# glance を ~/.local/bin/glance に配置する。daemon ではないので launchd
-# 登録は不要 — single-shot CLI として PATH に通すだけ。
+# Install glance to ~/.local/bin/glance. Not a daemon, so no launchd
+# registration — just put the single-shot CLI on PATH.
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -13,9 +13,9 @@ install -m 0755 "$DIR/bin/glance" "$BIN"
 
 echo "installed: $BIN"
 
-# PATH 通ってる? 通ってなければ案内。
+# On PATH? If not, say how.
 case ":$PATH:" in
     *":$HOME/.local/bin:"*) ;;
-    *) echo "note: $HOME/.local/bin が PATH に無い。.zshrc / .bashrc に追加してください:"
+    *) echo "note: $HOME/.local/bin is not on PATH. Add it in .zshrc / .bashrc:"
        echo "      export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
 esac

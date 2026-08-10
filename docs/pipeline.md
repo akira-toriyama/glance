@@ -50,7 +50,7 @@ echo "$LONG_TEXT" |
   glance --markdown --title 'Summary' --width 480
 ```
 
-Useful inside `wand` as an "AI 要約" menu item — same pipeline, but
+Useful inside `wand` as an "AI summary" menu item — same pipeline, but
 the input is `$SELECTION` or the contents of a focused file.
 
 ### C. Definition / dictionary lookup

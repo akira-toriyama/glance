@@ -1,6 +1,6 @@
 import Foundation
 
-/// glance の CLI 引数。parse は純粋関数なので XCTest で網羅可能。
+/// glance's CLI arguments. Parsing is a pure function, so XCTest covers it.
 public struct Args: Equatable {
     public var title: String
     public var atX: Double?
@@ -10,22 +10,23 @@ public struct Args: Equatable {
     public var width: Double?
     public var height: Double?
     public var copy: Bool
-    /// 本文ベースフォントサイズ。nil なら adapter 側のデフォルト (16pt)。
+    /// Base body font size. nil = the adapter-side default (16pt).
     public var fontSize: Double?
-    /// Highlightr のテーマ名 (highlight.js 標準テーマ)。nil なら
-    /// `atom-one-dark` (adapter 側で hardcoded 既定)。
+    /// Highlightr theme name (a stock highlight.js theme). nil =
+    /// `atom-one-dark` (the adapter-side hardcoded default).
     public var theme: String?
-    /// syntax highlight を一切しない (code block は全部 plain mono)。
-    /// Highlightr 起動を skip するので最速。
+    /// No syntax highlighting at all (every code block is plain mono).
+    /// Skips booting Highlightr, so it is the fastest.
     public var noHighlight: Bool
-    /// borderless HUD モード。titleBar / closable / resizable を外し、
-    /// 角丸付きの "通知っぽい" 矩形にする。短い toast 表示向け。
+    /// Borderless HUD mode. Drops titleBar / closable / resizable for a
+    /// rounded "notification-like" rectangle. For short toasts.
     public var hud: Bool
-    /// 「panel 外クリックでは閉じない」モード。**X ボタン** が主役の
-    /// dismiss 経路。`--auto-close` も無効化する。Esc / ⌘W は誤操作で
-    /// 詰まらないよう **そのまま** 残す (キーボード安全弁)。長時間
-    /// reference 用 / 注意を引きたい通知の用途。`--hud` (X ボタン無し) や
-    /// `--auto-close` (矛盾) との組み合わせは parseArgs でエラーにする。
+    /// The "clicking outside the panel does not close it" mode. The **X
+    /// button** becomes the primary dismiss path; `--auto-close` is also
+    /// disabled. Esc / ⌘W stay **as-is** so a mis-click can never wedge you
+    /// (the keyboard safety valve). For long-lived references / notifications
+    /// that must hold attention. Combining with `--hud` (no X button) or
+    /// `--auto-close` (contradictory) errors in parseArgs.
     public var sticky: Bool
 
     public init(title: String = "",
@@ -142,9 +143,9 @@ public func parseArgs(_ argv: [String]) throws -> ArgsAction {
             args.fontSize = n
             i += 2
         case "--theme":
-            // Highlightr テーマ名。 atom-one-dark / nord / monokai-sublime /
-            // vs2015 / github-dark など。未知名は Highlightr が黙って no-op
-            // (前テーマのまま) なので、使う側で正しい名前を渡す前提。
+            // Highlightr theme name: atom-one-dark / nord / monokai-sublime /
+            // vs2015 / github-dark, …. An unknown name is a silent Highlightr
+            // no-op (previous theme kept), so callers pass a correct name.
             guard i + 1 < argv.count else {
                 throw ArgsParseError.missingValue(a)
             }

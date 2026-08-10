@@ -1,102 +1,107 @@
 # CLAUDE.md
 
-このリポジトリで作業する Claude / エージェント向けの構造・制約・流儀。
-人間の README は [README.md](README.md)（英語のみ — fleet の [doc-consistency-policy](https://github.com/akira-toriyama/.github/blob/main/docs/doc-consistency-policy.md)）。
+Structure, constraints, and house style for Claude / agents working in this
+repository. The human README is [README.md](README.md) (English-only — the
+fleet [doc-consistency-policy](https://github.com/akira-toriyama/.github/blob/main/docs/doc-consistency-policy.md)).
 
-## 用語
+## Vocabulary
 
-UI / 設定 / コード上の呼び名は [`docs/glossary.md`](docs/glossary.md) に従う
-— 正規名（`ViewerPanel`, `non-activating panel`, `dismiss paths`,
-`stdin pipeline`, `--auto-close`, `GLANCE_DEBUG`, `one-shot CLI`, …）のみを
-使い、`Don't call it:` 側の同義語は使わない。用語の追加・改名はコード
-変更と **同一 PR で** このファイルへ反映する。
+Names across UI / config / code follow [`docs/glossary.md`](docs/glossary.md)
+— use only the canonical names (`ViewerPanel`, `non-activating panel`,
+`dismiss paths`, `stdin pipeline`, `--auto-close`, `GLANCE_DEBUG`,
+`one-shot CLI`, …), never the `Don't call it:` synonyms. Term additions and
+renames land in this file **in the same PR** as the code change.
 
 ## What this is
 
-**glance** は stdin で受けた文字列を **非アクティブな macOS NSPanel** に表示する
-one-shot CLI。pipeline の "結果表示端" として使う。
+**glance** is a one-shot CLI that shows the string received on stdin in a
+**non-activating macOS NSPanel** — the "result display end" of a pipeline.
 
 ```
 some-cmd | glance --title "Result" --at 800 500
 ```
 
-設計の核は「**フォーカスを奪わない**」こと。`.nonactivatingPanel` style
-mask + `becomesKeyOnlyIfNeeded` で、元のアプリでキー入力を続けながら
-panel を眺められる UX（ツールバー風で、ソースアプリのフォーカスを保つ）。
+The design core is "**never steal focus**". With the `.nonactivatingPanel`
+style mask + `becomesKeyOnlyIfNeeded`, you keep typing in the original app
+while looking at the panel (toolbar-like UX preserving the source app's
+focus).
 
-連携想定:
+The intended chain:
 
 ```
-トリガー（検知） → wand (menu でアクション選択) → shell action (curl/jq 等) → glance (表示)
+trigger (detection) → wand (action choice via menu) → shell action (curl/jq …) → glance (display)
 ```
 
 ## Architecture (SwiftPM 3-layer)
 
-`facet` / `chord` / `perch` と同じヘキサゴナル分割:
+The same hexagonal split as `facet` / `chord` / `perch`:
 
 ```
 Sources/
-  GlanceCore/             pure logic: argv parser (Args / parseArgs / errors)。
-                          Foundation のみ。AppKit を含まない。XCTest で
-                          単体検証可能。
-  GlanceAdapterMacOS/     ViewerPanel: NSPanel 生成 / NSTextView マウント /
-                          NSEvent モニタ (click-outside, Esc) で dismiss。
-                          AppKit はここだけ。
-  GlanceApp/              @main: argv 解析 → stdin 読み → NSApp 起動 →
-                          ViewerPanel.present。lifecycle.
-Tests/GlanceCoreTests/    ArgsTests: flag parse + error cases。
+  GlanceCore/             pure logic: the argv parser (Args / parseArgs /
+                          errors). Foundation only — no AppKit. Unit-testable
+                          under XCTest.
+  GlanceAdapterMacOS/     ViewerPanel: creates the NSPanel / mounts the
+                          NSTextView / dismisses via NSEvent monitors
+                          (click-outside, Esc). AppKit lives only here.
+  GlanceApp/              @main: parse argv → read stdin → boot NSApp →
+                          ViewerPanel.present. Lifecycle.
+Tests/GlanceCoreTests/    ArgsTests: flag parsing + error cases.
 ```
 
 ## Build / Run
 
-ビルドは SwiftPM (`swift build -c release`)。`build.sh` がラップして
-`bin/glance` 配置 + codesign。
+Builds are SwiftPM (`swift build -c release`). `build.sh` wraps it: places
+`bin/glance` + codesigns.
 
-| script | 用途 |
+| script | Purpose |
 |---|---|
-| `./build.sh` | swift build → `bin/glance` cp → codesign (持続 / ad-hoc) |
-| `./run.sh` (無印) / `--demo` | build + verbose demo 起動 (`GLANCE_DEBUG=1`; panel + stderr + `/tmp/glance.log`)。他アプリの `./run.sh`(launch) 相当 |
-| `./run.sh --install` / `-i` | `install.sh` 委譲 (`~/.local/bin/glance` 配置・静音)。他アプリの brew install 相当 |
-| `./stop.sh` | stuck panel が居たら `pkill`。通常は user dismiss で自滅 |
-| `./install.sh` | build → `~/.local/bin/glance` 配置 |
-| `./setup-signing-cert.sh` | 持続自己署名 identity (`glance-dev`) 作成 |
-| `./scripts/build-icon.sh` | SF Symbol から `AppIcon.icns` 生成 (`text.viewfinder` / amber) |
+| `./build.sh` | swift build → cp to `bin/glance` → codesign (persistent / ad-hoc) |
+| `./run.sh` (bare) / `--demo` | build + verbose demo (`GLANCE_DEBUG=1`; panel + stderr + `/tmp/glance.log`). The analogue of other apps' `./run.sh` (launch) |
+| `./run.sh --install` / `-i` | delegates to `install.sh` (place into `~/.local/bin/glance`, quiet). The analogue of other apps' brew install |
+| `./stop.sh` | `pkill` any stuck panel. Normally user dismiss self-terminates |
+| `./install.sh` | build → place into `~/.local/bin/glance` |
+| `./setup-signing-cert.sh` | create the persistent self-signed identity (`glance-dev`) |
+| `./scripts/build-icon.sh` | generate `AppIcon.icns` from an SF Symbol (`text.viewfinder` / amber) |
 
-production も `~/.local/bin/glance` 配置でよい (daemon ではないので
-LaunchAgent 不要)。Homebrew は `akira-toriyama/tap/glance` を提供予定。
+Production placement is also `~/.local/bin/glance` (not a daemon, so no
+LaunchAgent). Homebrew via `akira-toriyama/tap/glance` is planned.
 
-## Architecture (制約)
+## Architecture (constraints)
 
-- **macOS 26+ (Tahoe+)**。sill の `Palette` / `PaletteKit` が macOS 26 floor を持つ
-  (t-tbar) ため。`.nonactivatingPanel` + `swift-markdown` / `Highlightr`
-  レンダリングもこの floor の内側で動く。
-- **one-shot CLI**。stdin 読み終わったら NSApp.run() → user dismiss →
-  NSApp.terminate(nil) → プロセス終了。
-- **focus を奪わない**: `.nonactivatingPanel` style mask、
-  `becomesKeyOnlyIfNeeded`、`orderFrontRegardless()` で order front
-  (makeKey はしない)。
-- **dismiss 経路**: (1) panel 外クリック (global mouse monitor)、
-  (2) Esc / ⌘W (panel が transient に key になった時の local key monitor)、
-  (3) `--auto-close N` の N 秒タイマー、(4) 標準の panel close ボタン。
-  `--sticky` は (1)(3) を無効化し X ボタン + Esc/⌘W を主役にする。
-  `--hud` は borderless で (4) を持たない。
-- **markdown rendering**: `swift-markdown` の AST を自前 visitor
-  (`MarkdownRenderer` の `MarkupVisitor`) で `NSAttributedString` に変換
-  (tables / task list / strikethrough 対応のため標準 API ではなく自前)。
-  code block は `Highlightr` で syntax highlight (`--theme` / `--no-highlight`
-  で制御)。色は sill role (`foreground` / `tertiary` / `primary` / `border`)
-  に乗せてダークモード追従 (`labelColor` ではない)。
-- **空 stdin は no-op**: pipeline 上流が空を吐いた時に空 panel を出さない
-  (= 静かに exit 0)。
-- **ネットワーク呼び出ししない**: HTTP 呼び出しは pipeline 上流の責務。
-  glance は表示だけ。
+- **macOS 26+ (Tahoe+)** — because sill's `Palette` / `PaletteKit` carry a
+  macOS 26 floor (t-tbar). `.nonactivatingPanel` + the `swift-markdown` /
+  `Highlightr` rendering also run inside this floor.
+- **One-shot CLI**: finish reading stdin → NSApp.run() → user dismiss →
+  NSApp.terminate(nil) → process exit.
+- **Never steal focus**: the `.nonactivatingPanel` style mask,
+  `becomesKeyOnlyIfNeeded`, and `orderFrontRegardless()` to order front
+  (never makeKey).
+- **Dismiss paths**: (1) a click outside the panel (global mouse monitor),
+  (2) Esc / ⌘W (a local key monitor while the panel is transiently key),
+  (3) the `--auto-close N` timer, (4) the standard panel close button.
+  `--sticky` disables (1)(3), promoting the X button + Esc/⌘W;
+  `--hud` is borderless and lacks (4).
+- **Markdown rendering**: a hand-rolled visitor (`MarkdownRenderer`'s
+  `MarkupVisitor`) lowers the `swift-markdown` AST to `NSAttributedString`
+  (hand-rolled rather than the stock API, for tables / task lists /
+  strikethrough). Code blocks highlight via `Highlightr` (controlled by
+  `--theme` / `--no-highlight`). Colors ride the sill roles (`foreground` /
+  `tertiary` / `primary` / `border`) for dark-mode tracking (never
+  `labelColor`).
+- **Empty stdin is a no-op**: never show an empty panel when the pipeline
+  upstream produced nothing (= quiet exit 0).
+- **No network calls**: HTTP is the pipeline upstream's job; glance only
+  displays.
 
-### スコープ確定 (再提案しないこと)
+### Settled scope (do not re-propose)
 
-- **複数表示**: 1 プロセス = 1 panel。多 panel UI は別ツール。
-- **編集機能**: 表示のみ。stdin が source of truth、glance は read-only viewer。
-- **インタラクション**: link click 程度は許容、それ以上の UI 操作は
-  Raycast extension 等を使う方が筋。
+- **Multiple panels**: 1 process = 1 panel. A multi-panel UI is a different
+  tool.
+- **Editing**: display only. stdin is the source of truth; glance is a
+  read-only viewer.
+- **Interaction**: a link click is acceptable; anything beyond belongs in a
+  Raycast extension or similar.
 
 ## CLI surface
 
@@ -118,101 +123,119 @@ glance --version / -V         print version, exit
 glance --help / -h            print help, exit
 ```
 
-`--sticky` は `--hud`（X ボタン無し）/ `--auto-close`（矛盾）と排他で、
-指定すると `parseArgs` が `invalidCombination` を投げて exit 2。
+`--sticky` is mutually exclusive with `--hud` (no X button) and
+`--auto-close` (contradictory); combining makes `parseArgs` throw
+`invalidCombination`, exit 2.
 
-**atelier Phase 3 (family CLI 文法統一): glance は OUT.** data-processing
-(stdin→panel one-shot・domain 0 / verb 1) ゆえ yabai 式 domain-verb 文法の
-対象外。横断 sub-規約には**既に適合済み**で追加の移行は不要:
+**atelier Phase 3 (the family CLI-grammar unification): glance is OUT.** As
+data-processing (stdin→panel one-shot; 0 domains / 1 verb) it is outside
+the yabai-style domain-verb grammar, and it **already conforms** to the
+cross-cutting sub-conventions — no further migration:
 
-- canonical-only — 短縮 alias は family carve-out の `-h` / `-V` のみ（他に
-  bare-flag alias なし）。`--at <x> <y>` は既に空白区切り。
-- unknown-flag は loud に `ArgsParseError.unknownFlag` → stderr ＋ **exit 2**
-  （no silent fallback）。
-- **死守の例外**: 空 stdin は **silent exit 0**（pipeline で上流が空を返した
-  時に空 panel を出さない＝Unix filter 尾。`Main.swift` の guard）。
+- canonical-only — the only short aliases are the family carve-outs `-h` /
+  `-V` (no other bare-flag aliases). `--at <x> <y>` is already
+  space-separated.
+- unknown flags are loud: `ArgsParseError.unknownFlag` → stderr + **exit 2**
+  (no silent fallback).
+- **The defended exception**: empty stdin is a **silent exit 0** (never an
+  empty panel when the upstream returns nothing = the Unix filter tail;
+  the guard in `Main.swift`).
 
-正典は [cli-grammar.md](https://github.com/akira-toriyama/atelier/blob/main/docs/cli-grammar.md)。
+Canon: [cli-grammar.md](https://github.com/akira-toriyama/atelier/blob/main/docs/cli-grammar.md).
 
 ## Debugging
 
-| ログ先 | 条件 |
+| Log sink | Condition |
 |---|---|
-| stderr | parse error / 起動失敗時、または `GLANCE_DEBUG=1` の debug ミラー |
-| `/tmp/glance.log` | `GLANCE_DEBUG=1` 時の verbose trace (引数 / stdin サイズ / panel frame / dismiss) |
-| (なし) | 通常運転中は黙る。"Result が出ない" → 上流 pipeline を疑う |
+| stderr | parse errors / launch failures, or the `GLANCE_DEBUG=1` debug mirror |
+| `/tmp/glance.log` | the verbose trace under `GLANCE_DEBUG=1` (args / stdin size / panel frame / dismiss) |
+| (none) | silent in normal operation. "No result shows" → suspect the upstream pipeline |
 
-調査の早道:
+Fast paths for investigation:
 
-- `printf 'x' | glance --title test` で最低限の表示確認 (`GLANCE_DEBUG=1`
-  を前置すると trace 付き: `printf 'x' | GLANCE_DEBUG=1 glance --title test`)
-- `./run.sh`(無印) / `--demo` は `GLANCE_DEBUG=1` 付きで起動 (stderr + /tmp/glance.log)
-- 上流の問題なら `... | tee /tmp/glance-in.txt | glance ...` で
-  入力を覗ける
+- `printf 'x' | glance --title test` for the minimal display check
+  (prepend `GLANCE_DEBUG=1` for the trace:
+  `printf 'x' | GLANCE_DEBUG=1 glance --title test`)
+- `./run.sh` (bare) / `--demo` launch with `GLANCE_DEBUG=1` (stderr +
+  /tmp/glance.log)
+- For upstream problems, `... | tee /tmp/glance-in.txt | glance ...` lets
+  you inspect the input
 
-**verbose の唯一のトリガは `GLANCE_DEBUG` 環境変数** (`--debug` flag は無い —
-facet/chord/wand/perch 家系と統一)。通常 pipe 起動では set されず静か。
-`Log` (always-on `Log.line` + gated `Log.debug`) は `GlanceCore` に在る。
+**The only verbose trigger is the `GLANCE_DEBUG` environment variable**
+(there is no `--debug` flag — unified with the facet/chord/wand/perch
+family). A normal pipe launch never sets it and stays quiet. `Log`
+(always-on `Log.line` + gated `Log.debug`) lives in `GlanceCore`.
 
 ## Conventions
 
-- **コミット**: gitmoji 駆動 — `<:gitmoji:>[(<scope>)][!] <subject>`。
-  先頭の `:code:` が type（Conventional の `<type>` 語は退役。legacy な
-  `<type>(scope):` token は lint が accept-and-ignore するので旧履歴は通る）。
-  機械正本は `glyph rules`。ローカル hook は `glyph hook install`
-- **PR**: タイトルも同じ形式 (`commit-lint.yml` がチェック)。
-- **コメント**: WHY を書く。WHAT は識別子で語る。多段の docstring は禁止。
-- **依存**: SwiftPM 経由で追加可。ライセンスは MIT / Apache-2 互換に
-  限る。`Package.swift` への追加は PR description で根拠を書く
-  (e.g. "swift-markdown: GFM tables / task lists / strikethrough のため")。
-  build time と binary size への影響を意識する。
+- **Commits**: gitmoji-driven — `<:gitmoji:>[(<scope>)][!] <subject>`. The
+  leading `:code:` IS the type (the Conventional `<type>` word is retired;
+  legacy `<type>(scope):` tokens are accept-and-ignored by the lint, so old
+  history passes). The machine canon is `glyph rules`; install the local
+  hook with `glyph hook install`
+- **PRs**: titles use the same format (`commit-lint.yml` checks).
+- **Comments**: write the WHY. The WHAT is told by identifiers. No stacked
+  docstrings.
+- **Dependencies**: additions via SwiftPM are fine; licenses limited to
+  MIT / Apache-2 compatible. Justify `Package.swift` additions in the PR
+  description (e.g. "swift-markdown: for GFM tables / task lists /
+  strikethrough"). Mind build time and binary size.
 
 ## CI (.github/workflows)
 
-| ファイル | 役割 |
+| File | Role |
 |---|---|
-| `build.yml` | PR で macos runner 上 `./build.sh` + `swift test` + `--version` sanity |
-| `shellcheck.yml` | shell スクリプトの lint |
-| `commit-lint.yml` | commit / PR title が convention に従うか (reusable に委譲) |
-| `glossary.yml` | `docs/glossary.md` から glossary SPA を生成し GitHub Pages へ deploy (PR は build のみ) |
-| `taplo.yml` | `**/*.toml` の TOML lint (reusable に委譲) |
-| `release.yml` | glyph の reusable (binary mode) に委譲 — semver/notes を gitmoji から導出し rolling draft を upsert |
-| `update-tap.yml` | release publish 後に `akira-toriyama/homebrew-tap` を自動 bump |
+| `build.yml` | on PR: `./build.sh` + `swift test` + a `--version` sanity check on a macos runner |
+| `shellcheck.yml` | lint the shell scripts |
+| `commit-lint.yml` | commit / PR titles follow the convention (delegated to the reusable) |
+| `glossary.yml` | build the glossary SPA from `docs/glossary.md` and deploy to GitHub Pages (PRs build only) |
+| `taplo.yml` | TOML lint over `**/*.toml` (delegated to the reusable) |
+| `release.yml` | delegates to glyph's reusable (binary mode) — semver/notes derived from gitmoji, rolling draft upserted |
+| `update-tap.yml` | auto-bump `akira-toriyama/homebrew-tap` after a release publishes |
 
-`update-tap.yml` は `HOMEBREW_TAP_TOKEN` (fine-grained PAT) が必要。
-未設定なら no-op で安全に skip。
+`update-tap.yml` needs `HOMEBREW_TAP_TOKEN` (a fine-grained PAT). Unset =
+a safe no-op skip.
 
-## References (家風ソース)
+## References (house-style sources)
 
-glance の流儀は以下と意図的に揃えている (家風):
+glance's style deliberately aligns with:
 
 - [facet](https://github.com/akira-toriyama/facet) — workspace + window manager
 - [chord](https://github.com/akira-toriyama/chord) — hotkey daemon
 - [perch](https://github.com/akira-toriyama/perch) — keyboard-driven UI navigator
 - [wand](https://github.com/akira-toriyama/wand) — gesture + launcher
 
-共通: SwiftPM 3-layer / README EN/JA 並行 / `run.sh` `stop.sh` /
-`scripts/build-icon.sh` / SF Symbol アイコン / `--help` `--version`
-CLI / commit-msg hook / multi-workflow CI / Homebrew tap 外出し。
+Shared: the SwiftPM 3-layer split / English-only docs (the fleet
+doc-consistency policy) / `run.sh` `stop.sh` / `scripts/build-icon.sh` /
+SF Symbol icons / `--help` `--version` CLI / the commit-msg hook /
+multi-workflow CI / the Homebrew tap kept out-of-repo.
 
-連携先 (glance 観点):
+Integration partners (from glance's viewpoint):
 
-- トリガー（chord のホットキーやテキスト選択監視など） — 選択テキストを
-  `$SELECTION` として pipeline に流す。
-- [wand](https://github.com/akira-toriyama/wand) — `wand tome --open` で
-  action 選択 UI を出す。クリックされた item の action-cmd が glance を
-  呼ぶ pipeline 末端。
+- The trigger (a chord hotkey, text-selection watching, …) — streams the
+  selected text into the pipeline as `$SELECTION`.
+- [wand](https://github.com/akira-toriyama/wand) — `wand tome --open` shows
+  the action-choice UI; the clicked item's action-cmd calls glance at the
+  pipeline's tail.
 
 ## Shared libraries (atelier)
 
-このアプリは swift app family の共有ライブラリに乗る（plan [atelier](https://github.com/akira-toriyama/atelier)）。
-共有 lib が持つ責務は**再実装せずライブラリ側を拡張**する（北極星＝「facet の theme を真似て」を二度と言わない）。
-モジュール → target の正確な配線は [Package.swift](Package.swift) を正とする。
+This app rides the swift app family's shared libraries (plan:
+[atelier](https://github.com/akira-toriyama/atelier)). A responsibility a
+shared lib owns is **extended on the library side, never reimplemented**
+(the north star: never again say "imitate facet's theme"). The exact
+module → target wiring: [Package.swift](Package.swift) is the truth.
 
-- **[sill](https://github.com/akira-toriyama/sill)** — 共有 theming 基盤。設計 → [`docs/DESIGN.md`](https://github.com/akira-toriyama/sill/blob/main/docs/DESIGN.md)。glance が使う: `Palette` / `PaletteKit`（theming のみ）。
-- **[swift-toml-edit](https://github.com/akira-toriyama/swift-toml-edit)**（family 唯一の TOML 実装）は glance では**非使用**（glance は config.toml を持たない data-processing app）。
+- **[sill](https://github.com/akira-toriyama/sill)** — the shared theming
+  foundation; design →
+  [`docs/DESIGN.md`](https://github.com/akira-toriyama/sill/blob/main/docs/DESIGN.md).
+  glance uses: `Palette` / `PaletteKit` (theming only).
+- **[swift-toml-edit](https://github.com/akira-toriyama/swift-toml-edit)**
+  (the family's only TOML implementation) is **unused** in glance (a
+  data-processing app with no config.toml).
 
 ## Roadmap board (GitHub Projects)
 
-issue 運用（集約 Project「roadmap」#5・Inbox 既定 / Status フロー / `Closes #N`）は
-family 共通ポリシー。正典 → https://github.com/akira-toriyama/atelier/blob/main/docs/roadmap-board.md
+Issue operations (the aggregate Project "roadmap" #5, Inbox default /
+Status flow / `Closes #N`) are family-wide policy. Canon →
+https://github.com/akira-toriyama/atelier/blob/main/docs/roadmap-board.md

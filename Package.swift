@@ -29,15 +29,15 @@ let package = Package(
     ],
     dependencies: [
         // swift-markdown (Apache-2): CommonMark + GFM (tables / task lists /
-        // strikethrough)。NSAttributedString(markdown:) では届かない範囲を
-        // カバーするため。Apple 純正で軽量。
+        // strikethrough) — covering what NSAttributedString(markdown:)
+        // cannot reach. First-party Apple and lightweight.
         .package(url: "https://github.com/swiftlang/swift-markdown.git",
                  from: "0.4.0"),
-        // Highlightr (MIT): highlight.js を JavaScriptCore で動かす syntax
-        // highlighter。glance は claude-cli 出力等で多言語のコードを表示する
-        // 可能性が高いので、Swift only な Splash より highlight.js の広い
-        // 言語サポートを取る。JavaScriptCore は macOS 標準同梱なので追加
-        // binary size はテーマ CSS + JS 程度。
+        // Highlightr (MIT): a syntax highlighter running highlight.js on
+        // JavaScriptCore. glance is likely to display code in many languages
+        // (claude-cli output etc.), so highlight.js's broad language support
+        // beats the Swift-only Splash. JavaScriptCore ships with macOS, so
+        // the added binary size is just the theme CSS + JS.
         .package(url: "https://github.com/raspu/Highlightr.git",
                  from: "2.3.0"),
         // sill — the swift app family's shared theming library (plan

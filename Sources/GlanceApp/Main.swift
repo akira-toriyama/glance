@@ -35,8 +35,8 @@ enum GlanceApp {
             let text = readStdin()
             Log.debug("stdin: \(text.count) chars; markdown=\(args.markdown) "
                 + "title=\(args.title.isEmpty ? "—" : args.title)")
-            // 空 input は黙って no-op (pipeline で curl が失敗した時に
-            // 空 panel が出てもノイズなだけ)。
+            // Empty input is a silent no-op (when curl fails in a
+            // pipeline, an empty panel would just be noise).
             guard !text.isEmpty else {
                 Log.debug("stdin empty — silent no-op exit")
                 exit(0)
@@ -45,8 +45,8 @@ enum GlanceApp {
         }
     }
 
-    /// AppKit を起動して NSPanel 表示 → user 操作で terminate。
-    /// `setActivationPolicy(.accessory)` で Dock に出ないようにする。
+    /// Boot AppKit, show the NSPanel, terminate on user action.
+    /// `setActivationPolicy(.accessory)` keeps it out of the Dock.
     @MainActor
     static func runViewer(text: String, args: Args) {
         let app = NSApplication.shared
@@ -56,7 +56,7 @@ enum GlanceApp {
                        copy: args.copy,
                        copyText: text)
         Log.debug("panel presented — entering run loop")
-        // viewer 内で dismiss されると NSApp.terminate が呼ばれてここから抜ける。
+        // A dismiss inside the viewer calls NSApp.terminate, exiting here.
         app.run()
     }
 
