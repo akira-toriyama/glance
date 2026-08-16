@@ -145,7 +145,7 @@ Current deps:
 - A human publishes the draft when ready.
 - `update-tap.yml` then auto-bumps the
   [Homebrew tap](https://github.com/akira-toriyama/homebrew-tap)
-  formula (needs `HOMEBREW_TAP_TOKEN` secret; no-op if missing).
+  formula (needs `HOMEBREW_TAP_DEPLOY_KEY` secret; no-op if missing).
 
 ## Reporting bugs
 
