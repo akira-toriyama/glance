@@ -27,7 +27,7 @@ case "${1:-}" in
         # shellcheck disable=SC2016
         printf '%s' '# glance demo
 
-Shows `some-cmd`'s output in a non-activating panel. **Focus** is never
+Shows `some-cmd`'\''s output in a non-activating panel. **Focus** is never
 stolen, so you can keep typing in the original app.
 
 ## syntax highlight
