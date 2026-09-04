@@ -46,7 +46,7 @@ the markdown summary.
 
 ```sh
 echo "$LONG_TEXT" |
-  claude-cli "Summarize this in 3 bullets, then list 2 followup questions." |
+  claude -p 'Summarize this in 3 bullets, then list 2 followup questions.' |
   glance --markdown --title 'Summary' --width 480
 ```
 
@@ -69,7 +69,7 @@ right: borderless, rounded, no titlebar — like a macOS notification.
 
 ```sh
 # hash the selection
-printf '%s' "$SELECTION" | sha256sum | awk '{print $1}' |
+printf '%s' "$SELECTION" | shasum -a 256 | awk '{print $1}' |
   glance --hud --auto-close 3 --copy
 
 # date / time stamp
@@ -89,10 +89,12 @@ Bind a hotkey (via `chord`) to display the current clipboard as
 rendered markdown — useful when you've copied a markdown fragment
 from somewhere and want to read it nicely.
 
-```sh
-# chord config snippet
-key: "cmd+alt+v"
-run: pbpaste | glance --markdown --title 'Clipboard' --width 500
+```toml
+# ~/.config/chord/config.toml
+[[bindings]]
+name = "clipboard as markdown"
+input = "cmd + alt - v"
+action-shell = "pbpaste | glance --markdown --title 'Clipboard' --width 500"
 ```
 
 ### F. `tee` for debugging upstream
@@ -111,23 +113,8 @@ nothing.
 
 ## Where `glance` fits
 
-```
-┌───────────────────────────────────────────────────────────┐
-│ trigger                                                   │
-│   text selection / chord (hotkey) / wand (menu)           │
-└──────────────────────────┬────────────────────────────────┘
-                           │ stdin
-┌──────────────────────────▼────────────────────────────────┐
-│ action shell                                              │
-│   curl / jq / claude-cli / pbpaste / awk / your script    │
-└──────────────────────────┬────────────────────────────────┘
-                           │ stdout = stdin
-┌──────────────────────────▼────────────────────────────────┐
-│ display end                                               │
-│   glance --markdown --at X Y --auto-close N --copy        │
-│   (non-activating NSPanel, never steals focus)            │
-└───────────────────────────────────────────────────────────┘
-```
+trigger → action shell → display end; the diagram is
+[README § Pipeline](../README.md#pipeline).
 
 If you find yourself adding HTTP or transformation logic inside
 `glance`, it's a signal that the "action shell" stage should grow,

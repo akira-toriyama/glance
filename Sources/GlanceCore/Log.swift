@@ -9,7 +9,9 @@
 //                   stdin size, panel geometry, dismissal.
 //
 // Output:
-//   - `/tmp/glance.log` — always (both levels).
+//   - `/tmp/glance.log` — every emitted line. Nothing calls `Log.line`
+//     today, so a normal pipe run writes nothing; only `GLANCE_DEBUG=1`
+//     produces the trace.
 //   - stderr — only when `debugMode == true`, so a normal pipe run stays
 //     quiet and a `GLANCE_DEBUG=1 … | glance …` dev run streams live.
 

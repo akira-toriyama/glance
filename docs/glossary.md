@@ -27,20 +27,9 @@ it. When renaming a term, rewrite code, docs, and this file **in one PR**.
 
 ## Where glance sits
 
-glance is **the pipeline's "result display end"**. The typical chain:
-
-```mermaid
-flowchart LR
-  TRIGGER["trigger<br/>(detection)"]
-  WAND["wand<br/>tome --open (action choice)"]
-  SHELL["shell action<br/>(curl / jq …)"]
-  GLANCE["glance<br/>(display end)"]
-  USER["user"]
-  TRIGGER -->|"$SELECTION"| WAND
-  WAND -->|"action-cmd"| SHELL
-  SHELL -->|"stdout"| GLANCE
-  GLANCE -.panel.-> USER
-```
+glance is **the pipeline's "result display end"**: trigger → wand → shell
+action → glance. The chain is drawn once, in
+[README § Pipeline](../README.md#pipeline).
 
 The diagram below is the structure inside the glance process (3 layers +
 lifecycle / dismiss paths).
@@ -50,9 +39,11 @@ flowchart TB
   subgraph CORE["GlanceCore — pure logic"]
     ARGS["Args / parseArgs"]
     LOG["Log (line / debug)"]
+    VERSION["GlanceVersion"]
   end
   subgraph ADAPTER["GlanceAdapterMacOS — AppKit only here"]
     PANEL["ViewerPanel (NSPanel + NSTextView)"]
+    RENDER["MarkdownRenderer + GlanceLayoutManager (--markdown)"]
     MON["NSEvent monitors (click-outside / Esc)"]
     TIMER["--auto-close timer"]
   end
@@ -60,7 +51,9 @@ flowchart TB
     MAIN["argv → stdin → NSApp.run → present"]
   end
   MAIN --> ARGS
+  MAIN --> VERSION
   MAIN --> PANEL
+  PANEL --> RENDER
   PANEL --> MON
   PANEL --> TIMER
   MON -->|dismiss| PANEL
@@ -72,15 +65,17 @@ flowchart TB
 ## Layers / modules
 
 ### GlanceCore
-The **pure-logic layer**. `Args` / `parseArgs` / `Log` etc. live here.
-Foundation only — no AppKit. The unit-testable range under XCTest.
+The **pure-logic layer**. `Args` / `parseArgs` / `Log` / `GlanceVersion`
+live here. Foundation only — no AppKit. The unit-testable range under
+XCTest.
 - Location: [`Sources/GlanceCore/`](../Sources/GlanceCore/)
 - **Don't call it:** parser module, domain layer
 
 ### GlanceAdapterMacOS
-The **AppKit layer**. AppKit / Cocoa are used only by `ViewerPanel`
-(NSPanel creation + NSTextView mounting) and the `NSEvent` monitors
-(click-outside / Esc).
+The **AppKit layer** — the only target that imports AppKit: `ViewerPanel`
+(NSPanel creation + NSTextView mounting + the `NSEvent` monitors for
+click-outside / Esc), `MarkdownRenderer` (see markdown rendering) and
+`GlanceLayoutManager` (the inline-code pill drawing).
 - Location: [`Sources/GlanceAdapterMacOS/`](../Sources/GlanceAdapterMacOS/)
 - **Don't call it:** ui module, view layer
 
