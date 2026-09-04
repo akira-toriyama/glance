@@ -22,8 +22,8 @@ Add panel screenshots to docs/img/ and reference them here, e.g.:
 (Capture: ./bin/glance --markdown ... and Cmd+Shift+4 + Space + click the panel.)
 -->
 
-> See also: [CONTRIBUTING.md](CONTRIBUTING.md) ·
-> [Pipeline cookbook](docs/pipeline.md) ·
+> See also: [Pipeline cookbook](docs/pipeline.md) ·
+> [Glossary](docs/glossary.md) ·
 > [Commit convention](https://github.com/akira-toriyama/.github/blob/main/CONTRIBUTING.md)
 
 ## Highlights
@@ -70,29 +70,26 @@ Add panel screenshots to docs/img/ and reference them here, e.g.:
 
 ## Pipeline
 
-The intended composition:
+The intended composition (this diagram is the canonical one; the glossary
+and the cookbook link here rather than redraw it):
 
-```
-selection trigger    →  action shell                 →  glance
-─────────────────       ─────────────────────────       ─────────
-text-selection observer  curl ... | jq -r .text |       NSPanel popover
-hotkey + script                                         (no focus capture)
+```mermaid
+flowchart LR
+  TRIGGER["trigger<br/>(a chord hotkey, a text-selection observer)"]
+  WAND["wand<br/>tome --open (action choice)"]
+  SHELL["action shell<br/>(curl / jq / claude -p / your script)"]
+  GLANCE["glance<br/>(display end: non-activating NSPanel)"]
+  USER["user"]
+  TRIGGER -->|"$SELECTION"| WAND
+  WAND -->|"action-cmd"| SHELL
+  SHELL -->|"stdout = stdin"| GLANCE
+  GLANCE -.panel.-> USER
 ```
 
 glance is intentionally thin: stdin in, panel out. Translation, AI calls,
 dictionary lookup etc. live in the action shell (curl, jq, your scripts).
-
-## Architecture
-
-```mermaid
-flowchart LR
-    A["upstream pipeline<br/>(curl, jq, transform...)"] -->|stdin| B[glance]
-    B --> C["parseArgs<br/>title / at / markdown / copy / ..."]
-    C --> D["NSPanel<br/>nonactivating + floating"]
-    D --> E["NSTextView<br/>plain or markdown"]
-    E --> F["user dismisses<br/>click outside / Esc / auto-close"]
-    F --> G[NSApp.terminate]
-```
+The structure inside the glance process (layers, dismiss paths) is drawn
+in the [glossary](docs/glossary.md#where-glance-sits).
 
 ## Requirements
 
@@ -102,7 +99,7 @@ flowchart LR
 
 ## Install
 
-Homebrew (planned):
+Homebrew:
 
 ```sh
 brew install akira-toriyama/tap/glance
@@ -168,7 +165,7 @@ printf '%s' "$SELECTION" |
 
 # AI summary with markdown
 echo "$LONG_TEXT" |
-  claude-cli "Summarize this in 3 bullets:" |
+  claude -p 'Summarize this in 3 bullets:' |
   glance --markdown --title 'Summary' --width 480
 
 # Auto-close after 4s
@@ -214,19 +211,23 @@ The panel goes away when:
 ./stop.sh                  # kill any stuck glance panels (rare)
 ./setup-signing-cert.sh    # one-time: persistent self-signed identity
 ./scripts/build-icon.sh    # regenerate AppIcon.icns
-swift test                 # run XCTest suite (GlanceCoreTests)
+swift test                 # XCTest (GlanceCoreTests + GlanceAdapterMacOSTests); needs full Xcode, see below
 ```
 
 - SwiftPM project, hexagonal 3-layer:
-  `Sources/GlanceCore` (pure logic, Foundation only) /
-  `Sources/GlanceAdapterMacOS` (AppKit + markdown rendering /
-  syntax highlight) /
-  `Sources/GlanceApp` (CLI + @main)
-- Dependencies (SwiftPM, MIT / Apache-2 compatible only):
+  `Sources/GlanceCore` (`Args` / `parseArgs`, `Log`, `GlanceVersion`;
+  Foundation only) /
+  `Sources/GlanceAdapterMacOS` (`ViewerPanel`, `MarkdownRenderer`,
+  `GlanceLayoutManager`; AppKit lives only here) /
+  `Sources/GlanceApp` (`@main`: argv → stdin → NSApp lifecycle)
+- Dependencies (SwiftPM, MIT / Apache-2 compatible only; a new one is
+  justified in the PR that adds it):
   - [swift-markdown](https://github.com/swiftlang/swift-markdown)
     (Apache-2) — CommonMark + GFM parser
   - [Highlightr](https://github.com/raspu/Highlightr)
     (MIT) — highlight.js + JavaScriptCore wrapper
+  - [sill](https://github.com/akira-toriyama/sill) (MIT) — the app
+    family's shared theming (`Palette` / `PaletteKit`; one fixed preset)
 - Commit convention: gitmoji-driven
   (`glyph hook install` writes a local commit-msg hook that validates it)
 - Release: `release.yml` → rolling draft. Publish in GitHub UI →
@@ -239,11 +240,17 @@ swift test                 # run XCTest suite (GlanceCoreTests)
 ### `swift test` needs full Xcode
 
 If `swift test` fails locally with `no such module 'XCTest'`, you only
-have Command Line Tools. The XCTest framework ships with the full
-Xcode bundle. See
-[CONTRIBUTING.md → Tests need full Xcode](CONTRIBUTING.md#tests-need-full-xcode)
-for the one-time `xcode-select` switch. CI (macOS runner) always has
-Xcode, so PRs get the full test pass either way.
+have Command Line Tools: XCTest ships with the full Xcode bundle. With
+Xcode installed, point the toolchain at it once:
+
+```sh
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+xcrun --find xctest   # a path under Xcode.app
+```
+
+`swift build` and `./build.sh` work with the Command Line Tools alone.
+CI (`build.yml`, a macOS runner with Xcode) runs the suite on every PR, so
+a Tools-only machine still gets the full test pass there.
 
 ## License
 

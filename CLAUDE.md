@@ -26,7 +26,8 @@ style mask + `becomesKeyOnlyIfNeeded`, you keep typing in the original app
 while looking at the panel (toolbar-like UX preserving the source app's
 focus).
 
-The intended chain:
+The intended chain (the canonical diagram is README § Pipeline; the
+glossary and docs/pipeline.md link there):
 
 ```
 trigger (detection) → wand (action choice via menu) → shell action (curl/jq …) → glance (display)
@@ -43,10 +44,16 @@ Sources/
                           AppKit. Unit-testable under XCTest.
   GlanceAdapterMacOS/     ViewerPanel: creates the NSPanel / mounts the
                           NSTextView / dismisses via NSEvent monitors
-                          (click-outside, Esc). AppKit lives only here.
+                          (click-outside, Esc). MarkdownRenderer (the
+                          swift-markdown → NSAttributedString visitor +
+                          Highlightr) and GlanceLayoutManager (inline-code
+                          pills). AppKit lives only here.
   GlanceApp/              @main: parse argv → read stdin → boot NSApp →
                           ViewerPanel.present. Lifecycle.
 Tests/GlanceCoreTests/    ArgsTests: flag parsing + error cases.
+Tests/GlanceAdapterMacOSTests/
+                          MarkdownRendererTests: AST → attributed-string
+                          contracts.
 ```
 
 ## Build / Run
@@ -65,7 +72,13 @@ Builds are SwiftPM (`swift build -c release`). `build.sh` wraps it: places
 | `./scripts/build-icon.sh` | generate `AppIcon.icns` from an SF Symbol (`text.viewfinder` / amber) |
 
 Production placement is also `~/.local/bin/glance` (not a daemon, so no
-LaunchAgent). Homebrew via `akira-toriyama/tap/glance` is planned.
+LaunchAgent), or Homebrew via `akira-toriyama/tap/glance` (the formula
+builds the release tag's tarball with plain `swift build`; `update-tap.yml`
+bumps it).
+
+`swift test` needs the full Xcode (XCTest is not in the Command Line
+Tools); `swift build` / `./build.sh` do not. On a Tools-only machine,
+verify with `swift build` + binary probes and read the test result off CI.
 
 ## Architecture (constraints)
 
@@ -192,6 +205,12 @@ family). A normal pipe launch never sets it and stays quiet. `Log`
 | `taplo.yml` | TOML lint over `**/*.toml` (delegated to the reusable) |
 | `release.yml` | delegates to glyph's reusable (binary mode) — semver/notes derived from gitmoji, rolling draft upserted. Its `version-sync` job fails when `GlanceVersion.current` (`Sources/GlanceCore/Version.swift`) ≠ the draft's tag: the PR that moves the verdict bumps the constant (glyph never rewrites source; the tap formula's `brew test` asserts `--version`) |
 | `update-tap.yml` | auto-bump `akira-toriyama/homebrew-tap` after a release publishes |
+
+The other five (`actionlint.yml` / `repo-policy.yml` / `task-status.yml` /
+`version-preview.yml` / `zizmor.yml`), plus `commit-lint.yml` and
+`taplo.yml` above, are fleet-synced canonicals: never edit the per-repo
+copy — change the source in `akira-toriyama/.github` and let fleet-sync
+propagate it.
 
 `update-tap.yml` needs `HOMEBREW_TAP_DEPLOY_KEY` (the private half of the
 tap's write deploy key; fleet-sync fans it out — t-6bhz). With neither it nor

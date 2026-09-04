@@ -9,9 +9,10 @@
 // Architecture is hexagonal (Ports & Adapters), mirroring facet / chord /
 // perch:
 //
-//   GlanceCore         pure logic: argv parsing, markdown detection,
-//                      position math. Foundation only.
-//   GlanceAdapterMacOS NSPanel, NSTextView, event monitors. AppKit only.
+//   GlanceCore         pure logic: argv parsing, logging, the version
+//                      constant. Foundation only.
+//   GlanceAdapterMacOS NSPanel, NSTextView, event monitors, the markdown
+//                      renderer. AppKit only.
 //   GlanceApp          executable: @main, stdin read, app lifecycle.
 
 import PackageDescription
@@ -35,7 +36,7 @@ let package = Package(
                  from: "0.4.0"),
         // Highlightr (MIT): a syntax highlighter running highlight.js on
         // JavaScriptCore. glance is likely to display code in many languages
-        // (claude-cli output etc.), so highlight.js's broad language support
+        // (`claude -p` output etc.), so highlight.js's broad language support
         // beats the Swift-only Splash. JavaScriptCore ships with macOS, so
         // the added binary size is just the theme CSS + JS.
         .package(url: "https://github.com/raspu/Highlightr.git",
@@ -54,11 +55,12 @@ let package = Package(
         // Local dev: swap to `.package(path: "../sill")` for atomic
         // sill+glance editing; the committed form pins the published tag.
         //
-        // Floor 6.0.0 (sill t-0j0z): `paletteFor` went FAILABLE and the
-        // widget bridges went SwiftUI-native — glance feels neither, because
-        // its one theme reference is already the typed `Theme.catppuccinMocha`
-        // (a catalog cut would break the build here, not silently repaint)
-        // and it links no ThemeKitUI. Measured: zero source changes.
+        // `.upToNextMinor`, not `from:`: sill minors have moved API before
+        // (6.0.0 made `paletteFor` failable), so a minor lands here as a
+        // reviewed Dependabot PR that bumps this floor, never as a silent
+        // resolve. glance's one theme reference is the typed
+        // `Theme.catppuccinMocha`, so a catalog cut breaks the build rather
+        // than repainting.
         .package(url: "https://github.com/akira-toriyama/sill", .upToNextMinor(from: "8.8.0")),
     ],
     targets: [

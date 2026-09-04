@@ -3,8 +3,9 @@ import Foundation
 import GlanceAdapterMacOS
 import GlanceCore
 
-/// `@main enum GlanceApp` — keeps `@testable import GlanceApp` working from
-/// XCTest once CLI tests land. Same pattern facet / chord / perch.
+/// `@main enum`, not a top-level main.swift: an executable target with
+/// top-level code cannot be `@testable import`ed. Same pattern as facet /
+/// chord / perch.
 @main
 enum GlanceApp {
     @MainActor
@@ -121,7 +122,7 @@ enum GlanceApp {
         EXAMPLES
           printf 'Hello world' | glance --title 'Greeting'
           curl -s ... | jq -r .text | glance --title 'DeepL' --at 800 500
-          claude-cli ... | glance --markdown --title 'Summary'
+          claude -p '...' | glance --markdown --title 'Summary'
 
         See: https://github.com/akira-toriyama/glance
         """)
