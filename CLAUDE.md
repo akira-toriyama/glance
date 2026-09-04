@@ -40,9 +40,10 @@ The same hexagonal split as `facet` / `chord` / `perch`:
 ```
 Sources/
   GlanceCore/             pure logic: the argv parser (Args / parseArgs /
-                          errors), Defaults + HelpText, Log, GlanceVersion.
-                          Foundation only — no AppKit. Unit-testable under
-                          XCTest.
+                          errors), Defaults + HelpText, PanelGeometry
+                          (auto-height clamp / anchor → frame / screen
+                          clamp), Log, GlanceVersion. Foundation only — no
+                          AppKit. Unit-testable under XCTest.
   GlanceAdapterMacOS/     ViewerPanel: creates the NSPanel / mounts the
                           NSTextView / dismisses via NSEvent monitors
                           (click-outside, Esc). MarkdownRenderer (the
@@ -51,7 +52,7 @@ Sources/
                           pills). AppKit lives only here.
   GlanceApp/              @main: parse argv → read stdin → boot NSApp →
                           ViewerPanel.present. Lifecycle.
-Tests/GlanceCoreTests/    ArgsTests: flag parsing + error cases.
+Tests/GlanceCoreTests/    ArgsTests / HelpTextTests / PanelGeometryTests.
 Tests/GlanceAdapterMacOSTests/
                           MarkdownRendererTests: AST → attributed-string
                           contracts.
@@ -87,7 +88,8 @@ verify with `swift build` + binary probes and read the test result off CI.
   macOS 26 floor (t-tbar). `.nonactivatingPanel` + the `swift-markdown` /
   `Highlightr` rendering also run inside this floor.
 - **One-shot CLI**: finish reading stdin → NSApp.run() → user dismiss →
-  NSApp.terminate(nil) → process exit.
+  ViewerPanel's `onDismiss` → NSApp.terminate(nil) in GlanceApp → process
+  exit. The adapter closes its panel and never terminates NSApp itself.
 - **Never steal focus**: the `.nonactivatingPanel` style mask,
   `becomesKeyOnlyIfNeeded`, and `orderFrontRegardless()` to order front
   (never makeKey).

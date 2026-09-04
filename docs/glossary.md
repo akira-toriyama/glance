@@ -39,6 +39,7 @@ flowchart TB
   subgraph CORE["GlanceCore — pure logic"]
     ARGS["Args / parseArgs"]
     DEFAULTS["Defaults + HelpText"]
+    GEOM["PanelGeometry (height / anchor → frame / clamp)"]
     LOG["Log (line / debug)"]
     VERSION["GlanceVersion"]
   end
@@ -56,6 +57,7 @@ flowchart TB
   MAIN --> VERSION
   MAIN --> PANEL
   PANEL --> DEFAULTS
+  PANEL --> GEOM
   PANEL --> RENDER
   PANEL --> MON
   PANEL --> TIMER
@@ -69,7 +71,7 @@ flowchart TB
 
 ### GlanceCore
 The **pure-logic layer**. `Args` / `parseArgs` / `Defaults` / `HelpText` /
-`Log` / `GlanceVersion` live here. Foundation only — no AppKit. The unit-testable range under
+`PanelGeometry` / `Log` / `GlanceVersion` live here. Foundation only — no AppKit. The unit-testable range under
 XCTest.
 - Location: [`Sources/GlanceCore/`](../Sources/GlanceCore/)
 - **Don't call it:** parser module, domain layer
@@ -84,7 +86,7 @@ click-outside / Esc), `MarkdownRenderer` (see markdown rendering) and
 
 ### GlanceApp
 The `@main` entry. Owns only the lifecycle: parse argv → read stdin →
-`NSApp.run()` → `ViewerPanel.present`.
+`ViewerPanel.present` → `NSApp.run()` → `onDismiss` → `NSApp.terminate`.
 - Location: [`Sources/GlanceApp/`](../Sources/GlanceApp/)
 - **Don't call it:** main module, entry
 
