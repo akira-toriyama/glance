@@ -1,5 +1,5 @@
 {
-  "originHash" : "3ad61c380977420390d29c61724ec0a8627d475492273098a94fe973d6bbcd95",
+  "originHash" : "db30512ef631031b4a4b5a94d6e5d86b06c2a98f916ba8ffc7197421e2b23e64",
   "pins" : [
     {
       "identity" : "highlightr",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/akira-toriyama/sill",
       "state" : {
-        "revision" : "17343883aeb29442d4d21361b1bebf45f0854ba3",
-        "version" : "8.0.0"
+        "revision" : "2fe60cfc10bf215a77e8c22a898c49de62d6e506",
+        "version" : "8.8.0"
       }
     },
     {
@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/akira-toriyama/swift-toml-edit.git",
       "state" : {
-        "revision" : "1d1b01cd15d772d22af9f9f347a1bf1aa7e99789",
-        "version" : "2.3.1"
+        "revision" : "603c402868e1fb5c4348d130f16e73b401f531f8",
+        "version" : "3.0.0"
       }
     },
     {

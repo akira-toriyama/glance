@@ -59,7 +59,7 @@ let package = Package(
         // its one theme reference is already the typed `Theme.catppuccinMocha`
         // (a catalog cut would break the build here, not silently repaint)
         // and it links no ThemeKitUI. Measured: zero source changes.
-        .package(url: "https://github.com/akira-toriyama/sill", .upToNextMinor(from: "8.0.0")),
+        .package(url: "https://github.com/akira-toriyama/sill", .upToNextMinor(from: "8.8.0")),
     ],
     targets: [
         .target(name: "GlanceCore"),
