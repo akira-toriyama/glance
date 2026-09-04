@@ -1,5 +1,5 @@
 {
-  "originHash" : "db30512ef631031b4a4b5a94d6e5d86b06c2a98f916ba8ffc7197421e2b23e64",
+  "originHash" : "461c261ab2e17054c5ac54e19bc81188d4812fb92bb01d97eddfb3d226c53247",
   "pins" : [
     {
       "identity" : "highlightr",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/akira-toriyama/sill",
       "state" : {
-        "revision" : "2fe60cfc10bf215a77e8c22a898c49de62d6e506",
-        "version" : "8.8.0"
+        "revision" : "82d79e78deeea8d0c18fc8afbbafd851c9083e15",
+        "version" : "8.8.2"
       }
     },
     {
