@@ -7,8 +7,6 @@ import GlanceCore
 /// XCTest once CLI tests land. Same pattern facet / chord / perch.
 @main
 enum GlanceApp {
-    static let version = "0.2.0"
-
     @MainActor
     static func main() {
         let argv = Array(CommandLine.arguments.dropFirst())
@@ -30,7 +28,7 @@ enum GlanceApp {
 
         switch action {
         case .showHelp:    printHelp(); exit(0)
-        case .showVersion: print("glance \(version)"); exit(0)
+        case .showVersion: print("glance \(GlanceVersion.current)"); exit(0)
         case .viewer(let args):
             let text = readStdin()
             Log.debug("stdin: \(text.count) chars; markdown=\(args.markdown) "
@@ -80,7 +78,7 @@ enum GlanceApp {
 
     static func printHelp() {
         print("""
-        glance \(version) — display stdin in a non-activating macOS popover
+        glance \(GlanceVersion.current) — display stdin in a non-activating macOS popover
 
         glance reads stdin and shows it in a floating NSPanel. The panel does
         NOT take keyboard focus from the source app, so it's safe to use as
