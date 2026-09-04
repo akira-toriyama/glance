@@ -27,11 +27,12 @@ concurrency:
   group: release
   cancel-in-progress: false
 
-permissions:
-  contents: write
-
 jobs:
   release:
+    # Job-level, not workflow-level: zizmor reads a workflow-wide
+    # `contents: write` as overly broad once version-sync (read-only) exists.
+    permissions:
+      contents: write
     uses: akira-toriyama/glyph/.github/workflows/release.yml@v3.0.0
     with:
       binary: glance
