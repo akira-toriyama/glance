@@ -18,12 +18,9 @@ enum GlanceApp {
         let action: ArgsAction
         do {
             action = try parseArgs(argv)
-        } catch let e as ArgsParseError {
-            FileHandle.standardError.write(Data("glance: \(describe(e))\n".utf8))
-            FileHandle.standardError.write(Data("glance: try --help\n".utf8))
-            exit(2)
         } catch {
-            FileHandle.standardError.write(Data("glance: \(error)\n".utf8))
+            FileHandle.standardError.write(Data("glance: \(error.message)\n".utf8))
+            FileHandle.standardError.write(Data("glance: try --help\n".utf8))
             exit(2)
         }
 
@@ -64,19 +61,6 @@ enum GlanceApp {
         return String(data: data, encoding: .utf8) ?? ""
     }
 
-    static func describe(_ e: ArgsParseError) -> String {
-        switch e {
-        case .missingValue(let flag):
-            return "\(flag) requires a value"
-        case .invalidNumber(let flag, let raw):
-            return "\(flag): not a number: \(raw)"
-        case .unknownFlag(let f):
-            return "unknown flag: \(f)"
-        case .invalidCombination(let msg):
-            return msg
-        }
-    }
-
     static func printHelp() {
         print("""
         glance \(GlanceVersion.current) — display stdin in a non-activating macOS popover
@@ -94,12 +78,12 @@ enum GlanceApp {
                                left at this point. Default: screen center.
           --markdown           render stdin as Markdown (NSAttributedString)
           --copy               also copy stdin to clipboard (pbcopy)
-          --auto-close <s>     dismiss after N seconds
-          --width <px>         panel width  (default 380)
+          --auto-close <s>     dismiss after N seconds (N > 0)
+          --width <px>         panel width  (default 380; > 0)
           --height <px>        panel height (default: auto-size,
-                               clamped 80–600pt)
+                               clamped 80–600pt; > 0)
           --font-size <pt>     body font size (default 16; markdown
-                               headings scale relative to this)
+                               headings scale relative to this; > 0)
           --theme <name>       Highlightr theme for code blocks (default
                                atom-one-dark). Try: nord, monokai-sublime,
                                vs2015, github-dark, etc.
@@ -117,7 +101,9 @@ enum GlanceApp {
 
         EXIT CODES
           0   shown successfully (after dismissal)
-          2   bad flag / parse error
+          2   bad flag / parse error (unknown flag, missing or
+              non-numeric value, a sized option ≤ 0, --sticky with
+              --hud or --auto-close)
 
         EXAMPLES
           printf 'Hello world' | glance --title 'Greeting'

@@ -110,12 +110,12 @@ public final class ViewerPanel {
         // panel never overflows.
         let frame: NSRect = {
             let baseRect: NSRect
-            if let ax = args.atX, let ay = args.atY {
+            if let anchor = args.at {
                 // Cocoa coordinates (Y grows upward). The anchor = the
                 // panel's top-left, and the panel extends downward, so Y - h
                 // yields the actual frame.
-                baseRect = NSRect(x: CGFloat(ax),
-                                  y: CGFloat(ay) - h,
+                baseRect = NSRect(x: CGFloat(anchor.x),
+                                  y: CGFloat(anchor.y) - h,
                                   width: w,
                                   height: h)
             } else if let screen = NSScreen.main {

@@ -135,16 +135,19 @@ exit 0, never an empty panel).
 - **Don't call it:** input, source, data feed
 
 ### `--auto-close`
-The CLI flag auto-dismissing the panel after `<seconds>`. 0 / unset = no
-timer.
+The CLI flag auto-dismissing the panel after `<seconds>`. Unset = no
+timer; the value must be > 0 (0 or a negative is a `parseArgs` error,
+exit 2 — there is no "0 = off" spelling).
 - **Don't call it:** ttl, timeout, auto-dismiss
 
 ### `--at <x> <y>`
 The flag placing the panel's top-left anchor in **Cocoa coordinates**
-(Y-up, across all screens). Directly consistent with the coordinates the
-trigger passes (a chord hotkey, text-selection watching, …) — the same
-shape as the wand `tome --open --at` contract.
-- **Don't call it:** position, location, coords
+(Y-up, across all screens; either may be negative). Directly consistent
+with the coordinates the trigger passes (a chord hotkey, text-selection
+watching, …) — the same shape as the wand `tome --open --at` contract.
+Parsed into one `Anchor(x:y:)` value, so half an anchor cannot exist.
+- Code: [`Sources/GlanceCore/Args.swift`](../Sources/GlanceCore/Args.swift) (`Anchor`)
+- **Don't call it:** position, location, coords, atX / atY
 
 ### `--copy`
 The CLI flag that pbcopies the body **alongside** displaying it. Display
