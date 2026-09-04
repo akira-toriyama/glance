@@ -39,8 +39,8 @@ The same hexagonal split as `facet` / `chord` / `perch`:
 ```
 Sources/
   GlanceCore/             pure logic: the argv parser (Args / parseArgs /
-                          errors). Foundation only — no AppKit. Unit-testable
-                          under XCTest.
+                          errors), Log, GlanceVersion. Foundation only — no
+                          AppKit. Unit-testable under XCTest.
   GlanceAdapterMacOS/     ViewerPanel: creates the NSPanel / mounts the
                           NSTextView / dismisses via NSEvent monitors
                           (click-outside, Esc). AppKit lives only here.
@@ -190,7 +190,7 @@ family). A normal pipe launch never sets it and stays quiet. `Log`
 | `commit-lint.yml` | commit / PR titles follow the convention (delegated to the reusable) |
 | `glossary.yml` | build the glossary SPA from `docs/glossary.md` and deploy to GitHub Pages (PRs build only) |
 | `taplo.yml` | TOML lint over `**/*.toml` (delegated to the reusable) |
-| `release.yml` | delegates to glyph's reusable (binary mode) — semver/notes derived from gitmoji, rolling draft upserted |
+| `release.yml` | delegates to glyph's reusable (binary mode) — semver/notes derived from gitmoji, rolling draft upserted. Its `version-sync` job fails when `GlanceVersion.current` (`Sources/GlanceCore/Version.swift`) ≠ the draft's tag: the PR that moves the verdict bumps the constant (glyph never rewrites source; the tap formula's `brew test` asserts `--version`) |
 | `update-tap.yml` | auto-bump `akira-toriyama/homebrew-tap` after a release publishes |
 
 `update-tap.yml` needs `HOMEBREW_TAP_DEPLOY_KEY` (the private half of the

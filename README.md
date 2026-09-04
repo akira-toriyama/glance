@@ -231,6 +231,10 @@ swift test                 # run XCTest suite (GlanceCoreTests)
   (`glyph hook install` writes a local commit-msg hook that validates it)
 - Release: `release.yml` → rolling draft. Publish in GitHub UI →
   `update-tap.yml` bumps tap formula automatically
+- Version: `GlanceVersion.current` (`Sources/GlanceCore/Version.swift`) is
+  what `--version` prints and what the tap formula's `brew test` asserts.
+  The PR that moves the release verdict sets it to the tag the draft
+  targets; `release.yml`'s `version-sync` job fails on main until it does
 
 ### `swift test` needs full Xcode
 
