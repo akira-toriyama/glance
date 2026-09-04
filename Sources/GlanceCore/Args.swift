@@ -15,8 +15,8 @@ public struct Anchor: Equatable {
 }
 
 /// glance's CLI arguments. Parsing is a pure function, so XCTest covers it.
-/// `nil` on a sized option means "the adapter-side default" (width 380,
-/// auto-sized height, 16pt body, the atom-one-dark code theme).
+/// `nil` on a sized option means "the `Defaults` value" (auto-sized height
+/// for `--height`).
 public struct Args: Equatable {
     public var title = ""
     public var at: Anchor?
