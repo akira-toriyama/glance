@@ -52,3 +52,39 @@ jobs:
         xattr -d com.apple.quarantine ./glance
         chmod +x ./glance
         ```
+
+  # The tag glyph cuts lands on a commit that ALREADY EXISTS, so nothing in
+  # the release flow rewrites `GlanceVersion.current`; the PR that moves the
+  # verdict bumps it by hand (Sources/GlanceCore/Version.swift). This job
+  # turns a forgotten bump into a red Release run on main, instead of a
+  # `brew test glance` failure once the tag is out: the formula builds the
+  # tag's tarball and asserts `--version` against its own version, and 0.2.0
+  # shipped under v0.3.0 and v1.0.0 that way. Skipped when no release is
+  # due (`next` is empty on a none verdict).
+  version-sync:
+    needs: release
+    if: needs.release.outputs.next != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Compare GlanceVersion.current with the rolling draft's tag
+        env:
+          NEXT: ${{ needs.release.outputs.next }}
+        run: |
+          set -euo pipefail
+          current="$(sed -n 's/^ *public static let current = "\(.*\)"$/\1/p' Sources/GlanceCore/Version.swift)"
+          if [ -z "$current" ]; then
+            echo "::error::Sources/GlanceCore/Version.swift no longer declares 'public static let current = \"…\"' on one line — this job reads exactly that."
+            exit 1
+          fi
+          if [ "v$current" != "$NEXT" ]; then
+            echo "::error::GlanceVersion.current is $current but the rolling draft targets $NEXT — set it to ${NEXT#v} (Sources/GlanceCore/Version.swift) before publishing; a ':bookmark:= …' commit keeps the verdict where it is."
+            exit 1
+          fi
+          echo "GlanceVersion.current $current matches the draft's $NEXT"
