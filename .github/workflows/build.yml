@@ -42,6 +42,17 @@ jobs:
       - name: Sanity check binary
         run: file bin/glance && test -x bin/glance && ./bin/glance --version
 
+      # README § CLI is `--help` pasted verbatim (HelpText.render in
+      # GlanceCore is the one source). The two drifted once (help said
+      # NSAttributedString, README said CommonMark + GFM), so a help change
+      # must land with the README block in the same PR.
+      - name: README § CLI matches --help
+        run: |
+          set -euo pipefail
+          ./bin/glance --help > "$RUNNER_TEMP/help.txt"
+          awk '/^## CLI$/{f=1;next} f&&/^```$/{c++; if(c==2)exit; next} f&&c==1' README.md > "$RUNNER_TEMP/readme-cli.txt"
+          diff -u "$RUNNER_TEMP/readme-cli.txt" "$RUNNER_TEMP/help.txt"
+
   # swift-bite — this pull request's new/changed Swift tests (XCTest and
   # swift-testing alike) run against the source BEFORE the pull request, and
   # the job fails when every one of them still passes: a test that would have

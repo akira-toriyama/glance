@@ -38,6 +38,7 @@ lifecycle / dismiss paths).
 flowchart TB
   subgraph CORE["GlanceCore — pure logic"]
     ARGS["Args / parseArgs"]
+    DEFAULTS["Defaults + HelpText"]
     LOG["Log (line / debug)"]
     VERSION["GlanceVersion"]
   end
@@ -51,8 +52,10 @@ flowchart TB
     MAIN["argv → stdin → NSApp.run → present"]
   end
   MAIN --> ARGS
+  MAIN --> DEFAULTS
   MAIN --> VERSION
   MAIN --> PANEL
+  PANEL --> DEFAULTS
   PANEL --> RENDER
   PANEL --> MON
   PANEL --> TIMER
@@ -65,8 +68,8 @@ flowchart TB
 ## Layers / modules
 
 ### GlanceCore
-The **pure-logic layer**. `Args` / `parseArgs` / `Log` / `GlanceVersion`
-live here. Foundation only — no AppKit. The unit-testable range under
+The **pure-logic layer**. `Args` / `parseArgs` / `Defaults` / `HelpText` /
+`Log` / `GlanceVersion` live here. Foundation only — no AppKit. The unit-testable range under
 XCTest.
 - Location: [`Sources/GlanceCore/`](../Sources/GlanceCore/)
 - **Don't call it:** parser module, domain layer

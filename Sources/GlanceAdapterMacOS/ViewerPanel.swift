@@ -23,16 +23,12 @@ public final class ViewerPanel {
     /// with mousing. Matched to Notification Center's ~0.15s.
     private static let fadeDuration: TimeInterval = 0.14
 
-    /// The default base body font size; an explicit `--font-size` wins.
-    /// 16pt is a step above macOS's standard body (13pt) — right for the
-    /// "glance at it" use. Passed as MarkdownRenderer.Style.baseFontSize;
-    /// the heading hierarchy derives from it by multipliers.
-    private static let defaultBaseFontSize: CGFloat = 16
-
     /// Line-spacing / padding / block-level decoration constants — following
     /// MacDown GitHub2.css etc., translated into native NSAttributedString.
+    /// Sizes the help text quotes live in `Defaults` (GlanceCore).
     private static let bodyLineSpacing: CGFloat = 4
-    private static let bodyTextInset = NSSize(width: 18, height: 14)
+    private static let bodyTextInset = NSSize(width: Defaults.textInsetX,
+                                              height: Defaults.textInsetY)
     private static let codeBlockIndent: CGFloat = 10
     private static let codeBlockParagraphSpacing: CGFloat = 6
     private static let blockquoteIndent: CGFloat = 16
@@ -71,14 +67,14 @@ public final class ViewerPanel {
         // never boots Highlightr at all (skipping the ~30-100ms JSCore
         // start).
         MarkdownRenderer.configureSyntaxHighlighter(
-            theme: args.theme, enabled: !args.noHighlight)
+            theme: args.theme ?? Defaults.theme, enabled: !args.noHighlight)
 
-        let fontSize = args.fontSize.map { CGFloat($0) }
-            ?? Self.defaultBaseFontSize
+        // Passed as MarkdownRenderer.Style.baseFontSize; the heading
+        // hierarchy derives from it by multipliers.
+        let fontSize = CGFloat(args.fontSize ?? Defaults.fontSize)
         let isHud = args.hud
 
-        let defaultWidth: CGFloat = 380
-        let w = args.width.map { CGFloat($0) } ?? defaultWidth
+        let w = CGFloat(args.width ?? Defaults.width)
         let requestedH = args.height.map { CGFloat($0) }
 
         // Assemble the contentView first, then size the panel by the text's
@@ -96,12 +92,12 @@ public final class ViewerPanel {
             options: [.usesLineFragmentOrigin, .usesFontLeading]
         ).height
         // HUD has no title bar, so no slack subtracted.
-        let titleBarSlack: CGFloat = isHud ? 0 : 28
+        let titleBarSlack = CGFloat(isHud ? 0 : Defaults.titleBarSlack)
         let naturalPanelHeight = ceil(naturalTextHeight)
             + textInset.height * 2
             + titleBarSlack
-        let minH: CGFloat = isHud ? 40 : 80
-        let maxH: CGFloat = 600
+        let minH = CGFloat(isHud ? Defaults.hudMinHeight : Defaults.minHeight)
+        let maxH = CGFloat(Defaults.maxHeight)
         let autoH = min(max(naturalPanelHeight, minH), maxH)
         let h = requestedH ?? autoH
 

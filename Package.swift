@@ -9,8 +9,9 @@
 // Architecture is hexagonal (Ports & Adapters), mirroring facet / chord /
 // perch:
 //
-//   GlanceCore         pure logic: argv parsing, logging, the version
-//                      constant. Foundation only.
+//   GlanceCore         pure logic: argv parsing, the help text and the
+//                      panel defaults, logging, the version constant.
+//                      Foundation only.
 //   GlanceAdapterMacOS NSPanel, NSTextView, event monitors, the markdown
 //                      renderer. AppKit only.
 //   GlanceApp          executable: @main, stdin read, app lifecycle.

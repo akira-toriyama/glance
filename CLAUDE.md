@@ -40,8 +40,9 @@ The same hexagonal split as `facet` / `chord` / `perch`:
 ```
 Sources/
   GlanceCore/             pure logic: the argv parser (Args / parseArgs /
-                          errors), Log, GlanceVersion. Foundation only — no
-                          AppKit. Unit-testable under XCTest.
+                          errors), Defaults + HelpText, Log, GlanceVersion.
+                          Foundation only — no AppKit. Unit-testable under
+                          XCTest.
   GlanceAdapterMacOS/     ViewerPanel: creates the NSPanel / mounts the
                           NSTextView / dismisses via NSEvent monitors
                           (click-outside, Esc). MarkdownRenderer (the
@@ -118,23 +119,13 @@ verify with `swift build` + binary probes and read the test result off CI.
 
 ## CLI surface
 
-```
-some-cmd | glance              run viewer (read stdin, show panel)
-                  --title <s>       window title
-                  --at <x> <y>      Cocoa coords (Y-up), anchor at panel top-left
-                  --markdown        render as Markdown (swift-markdown + Highlightr)
-                  --copy            also pbcopy the input after showing the panel
-                  --auto-close <s>  dismiss after N seconds (N > 0)
-                  --width <px>      panel width  (default 380; > 0)
-                  --height <px>     panel height (default: auto-size, 80–600; > 0)
-                  --font-size <pt>  body font size (default 16; headings scale; > 0)
-                  --theme <name>    Highlightr code theme (default atom-one-dark)
-                  --no-highlight    skip syntax highlight (code = plain mono)
-                  --hud             borderless HUD (no title bar / close button)
-                  --sticky          strict: X/Esc only (no click-outside, no --auto-close)
-glance --version / -V         print version, exit
-glance --help / -h            print help, exit
-```
+The flag reference is `glance --help`, rendered by `HelpText.render` in
+GlanceCore from `Defaults` (panel width / body font size / auto-height
+clamp / title-bar slack / text inset / code theme live there and nowhere
+else).
+README § CLI is that output pasted verbatim; build.yml diffs the two, so a
+help change is a README change in the same PR. This file carries no
+third copy — only the rules the text cannot show:
 
 `--sticky` is mutually exclusive with `--hud` (no X button) and
 `--auto-close` (contradictory); combining makes `parseArgs` throw
@@ -202,7 +193,7 @@ family). A normal pipe launch never sets it and stays quiet. `Log`
 
 | File | Role |
 |---|---|
-| `build.yml` | on PR: `./build.sh` + `swift test` + a `--version` sanity check on a macos runner |
+| `build.yml` | on PR: `./build.sh` + `swift test` + a `--version` sanity check + README § CLI ≡ `--help` diff, on a macos runner |
 | `shellcheck.yml` | lint the shell scripts |
 | `commit-lint.yml` | commit / PR titles follow the convention (delegated to the reusable) |
 | `glossary.yml` | build the glossary SPA from `docs/glossary.md` and deploy to GitHub Pages (PRs build only) |
