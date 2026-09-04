@@ -124,10 +124,10 @@ some-cmd | glance              run viewer (read stdin, show panel)
                   --at <x> <y>      Cocoa coords (Y-up), anchor at panel top-left
                   --markdown        render as Markdown (swift-markdown + Highlightr)
                   --copy            also pbcopy the input after showing the panel
-                  --auto-close <s>  dismiss after N seconds
-                  --width <px>      panel width  (default 380)
-                  --height <px>     panel height (default: auto-size, 80–600)
-                  --font-size <pt>  body font size (default 16; headings scale)
+                  --auto-close <s>  dismiss after N seconds (N > 0)
+                  --width <px>      panel width  (default 380; > 0)
+                  --height <px>     panel height (default: auto-size, 80–600; > 0)
+                  --font-size <pt>  body font size (default 16; headings scale; > 0)
                   --theme <name>    Highlightr code theme (default atom-one-dark)
                   --no-highlight    skip syntax highlight (code = plain mono)
                   --hud             borderless HUD (no title bar / close button)
@@ -138,7 +138,11 @@ glance --help / -h            print help, exit
 
 `--sticky` is mutually exclusive with `--hud` (no X button) and
 `--auto-close` (contradictory); combining makes `parseArgs` throw
-`invalidCombination`, exit 2.
+`invalidCombination`, exit 2. The sized options (`--auto-close` /
+`--width` / `--height` / `--font-size`) reject 0 and negatives
+(`nonPositive`, exit 2) — there is no "0 = off" spelling; omit the flag.
+`parseArgs` is `throws(ArgsParseError)`; every case carries its stderr
+line in `message`.
 
 **atelier Phase 3 (the family CLI-grammar unification): glance is OUT.** As
 data-processing (stdin→panel one-shot; 0 domains / 1 verb) it is outside

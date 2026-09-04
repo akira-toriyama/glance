@@ -125,11 +125,12 @@ some-cmd | glance [flags]
                         never falls off-screen.
   --markdown            render stdin as Markdown (CommonMark + GFM)
   --copy                also copy stdin to clipboard (pbcopy)
-  --auto-close <s>      dismiss after N seconds
-  --width <px>          panel width  (default 380)
-  --height <px>         panel height (default: auto-size, clamped 80–600)
+  --auto-close <s>      dismiss after N seconds (N > 0)
+  --width <px>          panel width  (default 380; > 0)
+  --height <px>         panel height (default: auto-size, clamped 80–600;
+                        > 0)
   --font-size <pt>      body font size (default 16; markdown headings
-                        scale relative to this)
+                        scale relative to this; > 0)
   --theme <name>        Highlightr theme for code blocks (default
                         atom-one-dark). Try: nord, monokai-sublime,
                         vs2015, github-dark, etc.
@@ -146,7 +147,8 @@ some-cmd | glance [flags]
 
 Exit codes:
   0   shown successfully (after dismissal)
-  2   bad flag / parse error
+  2   bad flag / parse error (unknown flag, missing or non-numeric value,
+      a sized option ≤ 0, --sticky with --hud or --auto-close)
 ```
 
 ## Examples

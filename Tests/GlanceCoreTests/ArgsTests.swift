@@ -9,10 +9,10 @@ final class ArgsTests: XCTestCase {
             return XCTFail("expected .viewer, got \(result)")
         }
         XCTAssertEqual(a.title, "")
-        XCTAssertNil(a.atX)
-        XCTAssertNil(a.atY)
+        XCTAssertNil(a.at)
         XCTAssertFalse(a.markdown)
         XCTAssertNil(a.autoCloseSeconds)
+        XCTAssertEqual(a, Args())
     }
 
     func testHelpReturnsShowHelp() throws {
@@ -46,8 +46,15 @@ final class ArgsTests: XCTestCase {
             ["--at", "800", "500"]) else {
             return XCTFail("expected .viewer")
         }
-        XCTAssertEqual(a.atX, 800)
-        XCTAssertEqual(a.atY, 500)
+        XCTAssertEqual(a.at, Anchor(x: 800, y: 500))
+    }
+
+    func testAtAcceptsNegativeCoordinates() throws {
+        guard case .viewer(let a) = try parseArgs(
+            ["--at", "-1440", "-90"]) else {
+            return XCTFail("expected .viewer")
+        }
+        XCTAssertEqual(a.at, Anchor(x: -1440, y: -90))
     }
 
     func testMarkdownFlag() throws {
@@ -190,8 +197,7 @@ final class ArgsTests: XCTestCase {
             return XCTFail("expected .viewer")
         }
         XCTAssertEqual(a.title, "T")
-        XCTAssertEqual(a.atX, 10)
-        XCTAssertEqual(a.atY, 20)
+        XCTAssertEqual(a.at, Anchor(x: 10, y: 20))
         XCTAssertTrue(a.markdown)
     }
 
@@ -230,5 +236,63 @@ final class ArgsTests: XCTestCase {
             XCTAssertEqual(error as? ArgsParseError,
                            .unknownFlag("--bogus"))
         }
+    }
+
+    func testAtSecondNumberInvalid() {
+        XCTAssertThrowsError(
+            try parseArgs(["--at", "100", "y"])) { error in
+            XCTAssertEqual(error as? ArgsParseError,
+                           .invalidNumber("--at", "y"))
+        }
+    }
+
+    func testAutoCloseZeroIsRejected() {
+        XCTAssertThrowsError(try parseArgs(["--auto-close", "0"])) { error in
+            XCTAssertEqual(error as? ArgsParseError,
+                           .nonPositive("--auto-close", "0"))
+        }
+    }
+
+    func testAutoCloseNegativeIsRejected() {
+        XCTAssertThrowsError(try parseArgs(["--auto-close", "-2"])) { error in
+            XCTAssertEqual(error as? ArgsParseError,
+                           .nonPositive("--auto-close", "-2"))
+        }
+    }
+
+    func testWidthHeightFontSizeRejectNonPositive() {
+        for (flag, raw) in [("--width", "0"), ("--height", "-5"),
+                            ("--font-size", "0.0")] {
+            XCTAssertThrowsError(try parseArgs([flag, raw]), flag) { error in
+                XCTAssertEqual(error as? ArgsParseError,
+                               .nonPositive(flag, raw), flag)
+            }
+        }
+    }
+
+    func testWidthInvalidNumber() {
+        XCTAssertThrowsError(try parseArgs(["--width", "wide"])) { error in
+            XCTAssertEqual(error as? ArgsParseError,
+                           .invalidNumber("--width", "wide"))
+        }
+    }
+
+    func testWidthMissingValue() {
+        XCTAssertThrowsError(try parseArgs(["--width"])) { error in
+            XCTAssertEqual(error as? ArgsParseError,
+                           .missingValue("--width"))
+        }
+    }
+
+    func testErrorMessages() {
+        XCTAssertEqual(ArgsParseError.missingValue("--title").message,
+                       "--title requires a value")
+        XCTAssertEqual(ArgsParseError.invalidNumber("--at", "abc").message,
+                       "--at: not a number: abc")
+        XCTAssertEqual(ArgsParseError.nonPositive("--auto-close", "0").message,
+                       "--auto-close: must be greater than 0: 0")
+        XCTAssertEqual(ArgsParseError.unknownFlag("--bogus").message,
+                       "unknown flag: --bogus")
+        XCTAssertEqual(ArgsParseError.invalidCombination("x").message, "x")
     }
 }
