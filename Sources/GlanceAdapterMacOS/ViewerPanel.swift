@@ -350,12 +350,18 @@ public final class ViewerPanel {
             keyDownMonitor = nil
         }
         // Fade out, then close + terminate. An immediate close blinks out.
-        NSAnimationContext.runAnimationGroup({ ctx in
+        // The exit rides a timer, not the animation's completionHandler:
+        // with the display asleep Core Animation never completes, and the
+        // process lived until killed (measured 2026-09-05: `--auto-close 1`
+        // logged dismiss at 1 s and was still alive 60 s later; awake, the
+        // same run exits in 1.3 s). The GCD timer fires either way.
+        NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = Self.fadeDuration
             panel.animator().alphaValue = 0
-        }, completionHandler: {
-            self.panel.close()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.fadeDuration) { [panel] in
+            panel.close()
             NSApplication.shared.terminate(nil)
-        })
+        }
     }
 }
