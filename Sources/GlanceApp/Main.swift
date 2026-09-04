@@ -47,12 +47,13 @@ enum GlanceApp {
     static func runViewer(text: String, args: Args) {
         let app = NSApplication.shared
         app.setActivationPolicy(.accessory)
-        let viewer = ViewerPanel(text: text, args: args)
-        viewer.present(autoCloseSeconds: args.autoCloseSeconds,
-                       copy: args.copy,
-                       copyText: text)
+        let viewer = ViewerPanel(text: text, args: args) {
+            // One-shot: the panel is gone, so is the process. The adapter
+            // only closes its panel; the lifecycle stays here.
+            app.terminate(nil)
+        }
+        viewer.present()
         Log.debug("panel presented — entering run loop")
-        // A dismiss inside the viewer calls NSApp.terminate, exiting here.
         app.run()
     }
 

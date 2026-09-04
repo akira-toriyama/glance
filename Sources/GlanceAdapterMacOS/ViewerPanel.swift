@@ -7,17 +7,17 @@ import PaletteKit
 /// focus** is the design core — achieved with the `.nonactivatingPanel`
 /// style + `becomesKeyOnlyIfNeeded`.
 ///
-/// After showing, the user's dismiss (Esc / click outside the panel) is
-/// expected to call `NSApp.terminate(nil)`. With auto-close set, it
-/// self-destructs after the interval.
+/// Every dismiss path (Esc / ⌘W / click outside / `--auto-close` / the X
+/// button) fades the panel out, closes it and calls `onDismiss`; the App
+/// layer ends the process there — the adapter never terminates NSApp.
 @MainActor
 public final class ViewerPanel {
     private let panel: NSPanel
+    private let args: Args
+    private let text: String
+    private let onDismiss: @MainActor () -> Void
     private var clickOutsideMonitor: Any?
     private var keyDownMonitor: Any?
-    /// `--sticky`: disables outside-click and auto-close; the X button is
-    /// the primary dismiss. Esc / ⌘W remain as the safety valve.
-    private let sticky: Bool
 
     /// Fade-in/out duration. Too short looks like a pop; too long collides
     /// with mousing. Matched to Notification Center's ~0.15s.
@@ -57,85 +57,73 @@ public final class ViewerPanel {
     /// The HUD-mode corner radius — about a macOS notification banner's.
     private static let hudCornerRadius: CGFloat = 10
 
-    public init(text: String, args: Args) {
-        self.sticky = args.sticky
+    public init(text: String, args: Args,
+                onDismiss: @escaping @MainActor () -> Void) {
+        self.args = args
+        self.text = text
+        self.onDismiss = onDismiss
         // Resolve the fixed dark chrome from sill once. Panel bg / body
         // color / markdown role colors all derive from it.
         let palette = Self.chromePalette()
-        let chromeBackground = palette.background ?? NSColor(white: 0.118, alpha: 1)
-        // Configure the syntax highlighter from the CLI. `--no-highlight`
+        // Configure the syntax highlighter from the CLI before rendering
+        // (MarkdownRenderer reads it at render time). `--no-highlight`
         // never boots Highlightr at all (skipping the ~30-100ms JSCore
         // start).
         MarkdownRenderer.configureSyntaxHighlighter(
             theme: args.theme ?? Defaults.theme, enabled: !args.noHighlight)
-
         // Passed as MarkdownRenderer.Style.baseFontSize; the heading
         // hierarchy derives from it by multipliers.
         let fontSize = CGFloat(args.fontSize ?? Defaults.fontSize)
-        let isHud = args.hud
-
-        let w = CGFloat(args.width ?? Defaults.width)
-        let requestedH = args.height.map { CGFloat($0) }
-
-        // Assemble the contentView first, then size the panel by the text's
-        // natural height. An explicit --height is honored (no clamp).
-        let textInset = Self.bodyTextInset
         let attributed = Self.renderAttributed(
             text: text, markdown: args.markdown, fontSize: fontSize,
             palette: palette)
+        let frame = Self.frame(for: attributed, args: args)
+        panel = Self.makePanel(frame: frame, args: args, palette: palette)
+        panel.contentView = Self.makeContent(
+            attributed: attributed, frame: frame, fontSize: fontSize,
+            palette: palette, hud: args.hud)
+    }
 
-        let contentWidth = w
-        let textWidth = contentWidth - textInset.width * 2
+    /// Geometry: measure the text at the panel width, then PanelGeometry
+    /// (GlanceCore) decides height, anchor and the screen clamp.
+    private static func frame(for attributed: NSAttributedString,
+                              args: Args) -> NSRect {
+        let w = CGFloat(args.width ?? Defaults.width)
+        let textWidth = w - bodyTextInset.width * 2
         let naturalTextHeight = attributed.boundingRect(
             with: NSSize(width: textWidth,
                          height: .greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin, .usesFontLeading]
         ).height
-        // HUD has no title bar, so no slack subtracted.
-        let titleBarSlack = CGFloat(isHud ? 0 : Defaults.titleBarSlack)
-        let naturalPanelHeight = ceil(naturalTextHeight)
-            + textInset.height * 2
-            + titleBarSlack
-        let minH = CGFloat(isHud ? Defaults.hudMinHeight : Defaults.minHeight)
-        let maxH = CGFloat(Defaults.maxHeight)
-        let autoH = min(max(naturalPanelHeight, minH), maxH)
-        let h = requestedH ?? autoH
+        let h = PanelGeometry.height(
+            naturalTextHeight: naturalTextHeight,
+            requested: args.height.map { CGFloat($0) },
+            hud: args.hud)
+        return PanelGeometry.frame(
+            size: NSSize(width: w, height: h),
+            anchor: args.at,
+            visibleFrame: NSScreen.main?.visibleFrame)
+    }
 
-        // The anchor sits at the menu's top-left; without --at, screen
-        // center. Coordinates hugging the screen edge are clamped so the
-        // panel never overflows.
-        let frame: NSRect = {
-            let baseRect: NSRect
-            if let anchor = args.at {
-                // Cocoa coordinates (Y grows upward). The anchor = the
-                // panel's top-left, and the panel extends downward, so Y - h
-                // yields the actual frame.
-                baseRect = NSRect(x: CGFloat(anchor.x),
-                                  y: CGFloat(anchor.y) - h,
-                                  width: w,
-                                  height: h)
-            } else if let screen = NSScreen.main {
-                let f = screen.visibleFrame
-                baseRect = NSRect(x: f.midX - w / 2, y: f.midY - h / 2,
-                                  width: w, height: h)
-            } else {
-                baseRect = NSRect(x: 200, y: 200, width: w, height: h)
-            }
-            return Self.clampToScreen(baseRect)
-        }()
+    private static func chromeBackground(_ palette: ResolvedPalette) -> NSColor {
+        palette.background ?? NSColor(white: 0.118, alpha: 1)
+    }
 
+    /// The NSPanel itself: non-activating, floating, transient; HUD drops
+    /// the title bar and goes transparent so the root's rounded layer shows.
+    private static func makePanel(frame: NSRect, args: Args,
+                                  palette: ResolvedPalette) -> NSPanel {
+        let isHud = args.hud
         let styleMask: NSWindow.StyleMask = isHud
             ? [.nonactivatingPanel, .borderless]
             : [.nonactivatingPanel, .titled, .closable, .resizable]
-
-        panel = NSPanel(
+        let panel = NSPanel(
             contentRect: frame,
             styleMask: styleMask,
             backing: .buffered,
             defer: false)
         if !isHud {
             panel.title = args.title
-            panel.titlebarAppearsTransparent = false
         }
         panel.isFloatingPanel = true
         panel.hidesOnDeactivate = false
@@ -157,11 +145,18 @@ public final class ViewerPanel {
             panel.backgroundColor = .clear
         } else {
             panel.isOpaque = true
-            panel.backgroundColor = chromeBackground
+            panel.backgroundColor = chromeBackground(palette)
         }
-        panel.hasShadow = true
         panel.alphaValue = 0  // for the fade-in (present interpolates to 1)
+        return panel
+    }
 
+    /// root (fixed dark layer, rounded under HUD) → NSScrollView →
+    /// NSTextView on a hand-built TextKit 1 stack.
+    private static func makeContent(attributed: NSAttributedString,
+                                    frame: NSRect, fontSize: CGFloat,
+                                    palette: ResolvedPalette,
+                                    hud: Bool) -> NSView {
         // root: the fixed chrome background's CGColor. A layer bg never
         // tracks appearance dynamically, so windowBackgroundColor would bake
         // in the current app appearance (often light at launch),
@@ -170,9 +165,9 @@ public final class ViewerPanel {
         let root = NSView(frame: NSRect(origin: .zero, size: frame.size))
         root.autoresizingMask = [.width, .height]
         root.wantsLayer = true
-        root.layer?.backgroundColor = chromeBackground.cgColor
-        if isHud {
-            root.layer?.cornerRadius = Self.hudCornerRadius
+        root.layer?.backgroundColor = chromeBackground(palette).cgColor
+        if hud {
+            root.layer?.cornerRadius = hudCornerRadius
             root.layer?.masksToBounds = true
         }
 
@@ -203,7 +198,7 @@ public final class ViewerPanel {
         textView.isEditable = false
         textView.isSelectable = true
         textView.drawsBackground = false
-        textView.textContainerInset = textInset
+        textView.textContainerInset = bodyTextInset
         textView.font = .systemFont(ofSize: fontSize)
         textView.textColor = palette.foreground
         textView.usesFindBar = true
@@ -216,7 +211,7 @@ public final class ViewerPanel {
 
         scroll.documentView = textView
         root.addSubview(scroll)
-        panel.contentView = root
+        return root
     }
 
     private static func renderAttributed(text: String,
@@ -263,31 +258,17 @@ public final class ViewerPanel {
             codeBlockParagraphSpacing: codeBlockParagraphSpacing)
     }
 
-    /// Pulls an `--at` that dug into the screen edge back inside
-    /// visibleFrame. Matters when the upstream pipeline (the trigger's
-    /// selection coordinates) is near the right edge.
-    private static func clampToScreen(_ rect: NSRect) -> NSRect {
-        guard let screen = NSScreen.main else { return rect }
-        let vf = screen.visibleFrame
-        var r = rect
-        if r.maxX > vf.maxX { r.origin.x = vf.maxX - r.width }
-        if r.minX < vf.minX { r.origin.x = vf.minX }
-        if r.maxY > vf.maxY { r.origin.y = vf.maxY - r.height }
-        if r.minY < vf.minY { r.origin.y = vf.minY }
-        return r
-    }
 
     /// Show the panel. It orders front without `makeKey`, so the original
-    /// app keeps keyboard focus. With `copy=true` the shown content also
-    /// goes to pbcopy (for the paste-the-translation-later flow).
-    public func present(autoCloseSeconds: Double?, copy: Bool = false,
-                        copyText: String = "") {
-        Log.debug("present: frame=\(panel.frame) sticky=\(sticky) "
-            + "autoClose=\(autoCloseSeconds.map { String($0) } ?? "off") copy=\(copy)")
-        if copy && !copyText.isEmpty {
+    /// app keeps keyboard focus. Under `--copy` the shown text also goes to
+    /// the pasteboard (for the paste-the-translation-later flow).
+    public func present() {
+        Log.debug("present: frame=\(panel.frame) sticky=\(args.sticky) "
+            + "autoClose=\(args.autoCloseSeconds.map { String($0) } ?? "off") copy=\(args.copy)")
+        if args.copy {
             let pb = NSPasteboard.general
             pb.clearContents()
-            pb.setString(copyText, forType: .string)
+            pb.setString(text, forType: .string)
         }
         panel.orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { ctx in
@@ -298,7 +279,7 @@ public final class ViewerPanel {
         // Close on a click outside the panel. Deliberately not installed
         // under `--sticky` — Esc / ⌘W / the X button become the only
         // dismiss paths.
-        if !sticky {
+        if !args.sticky {
             clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(
                 matching: [.leftMouseDown, .rightMouseDown,
                            .otherMouseDown]) { [weak self] _ in
@@ -326,9 +307,8 @@ public final class ViewerPanel {
             return ev
         }
 
-        // No auto-close under `--sticky` (parseArgs already rejects the
-        // combination; this is a just-in-case double-check).
-        if !sticky, let seconds = autoCloseSeconds {
+        // parseArgs rejects --sticky with --auto-close, so no second guard.
+        if let seconds = args.autoCloseSeconds {
             DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
                 [weak self] in self?.dismiss()
             }
@@ -345,8 +325,8 @@ public final class ViewerPanel {
             NSEvent.removeMonitor(m)
             keyDownMonitor = nil
         }
-        // Fade out, then close + terminate. An immediate close blinks out.
-        // The exit rides a timer, not the animation's completionHandler:
+        // Fade out, then close + hand off. An immediate close blinks out.
+        // The hand-off rides a timer, not the animation's completionHandler:
         // with the display asleep Core Animation never completes, and the
         // process lived until killed (measured 2026-09-05: `--auto-close 1`
         // logged dismiss at 1 s and was still alive 60 s later; awake, the
@@ -355,9 +335,10 @@ public final class ViewerPanel {
             ctx.duration = Self.fadeDuration
             panel.animator().alphaValue = 0
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.fadeDuration) { [panel] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.fadeDuration) {
+            [panel, onDismiss] in
             panel.close()
-            NSApplication.shared.terminate(nil)
+            onDismiss()
         }
     }
 }

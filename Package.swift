@@ -10,8 +10,8 @@
 // perch:
 //
 //   GlanceCore         pure logic: argv parsing, the help text and the
-//                      panel defaults, logging, the version constant.
-//                      Foundation only.
+//                      panel defaults, panel geometry, logging, the version
+//                      constant. Foundation only.
 //   GlanceAdapterMacOS NSPanel, NSTextView, event monitors, the markdown
 //                      renderer. AppKit only.
 //   GlanceApp          executable: @main, stdin read, app lifecycle.
