@@ -234,8 +234,8 @@ swift test                 # XCTest (GlanceCoreTests + GlanceAdapterMacOSTests);
 ```
 
 - SwiftPM project, hexagonal 3-layer:
-  `Sources/GlanceCore` (`Args` / `parseArgs`, `Log`, `GlanceVersion`;
-  Foundation only) /
+  `Sources/GlanceCore` (`Args` / `parseArgs`, `GlanceVersion`, the `log`
+  instance from sill `LogKit`; Foundation only) /
   `Sources/GlanceAdapterMacOS` (`ViewerPanel`, `MarkdownRenderer`,
   `GlanceLayoutManager`; AppKit lives only here) /
   `Sources/GlanceApp` (`@main`: argv → stdin → NSApp lifecycle)

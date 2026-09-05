@@ -10,8 +10,8 @@
 // perch:
 //
 //   GlanceCore         pure logic: argv parsing, the help text and the
-//                      panel defaults, panel geometry, logging, the version
-//                      constant. Foundation only.
+//                      panel defaults, panel geometry, the version constant,
+//                      the process logger (sill LogKit). Foundation only.
 //   GlanceAdapterMacOS NSPanel, NSTextView, event monitors, the markdown
 //                      renderer. AppKit only.
 //   GlanceApp          executable: @main, stdin read, app lifecycle.
@@ -42,9 +42,10 @@ let package = Package(
         // the added binary size is just the theme CSS + JS.
         .package(url: "https://github.com/raspu/Highlightr.git",
                  from: "2.3.0"),
-        // sill — the swift app family's shared theming library (plan
-        // atelier). glance consumes `Palette` + `PaletteKit` (the AppKit
-        // resolver): it resolves ONE fixed dark preset (catppuccin-mocha,
+        // sill — the swift app family's shared library (plan atelier).
+        // glance consumes `LogKit` (the `/tmp/glance.log` + `GLANCE_DEBUG`
+        // logger, pure, linked from GlanceCore) and `Palette` +
+        // `PaletteKit` (the AppKit resolver): it resolves ONE fixed dark preset (catppuccin-mocha,
         // ≈ the old hand-tuned #1E1E1E) into the popover's panel chrome +
         // markdown role colours, so glance's look stays drift-free with the
         // rest of the family instead of hand-copied hex. No catalog
@@ -62,10 +63,11 @@ let package = Package(
         // resolve. glance's one theme reference is the typed
         // `Theme.catppuccinMocha`, so a catalog cut breaks the build rather
         // than repainting.
-        .package(url: "https://github.com/akira-toriyama/sill", .upToNextMinor(from: "8.8.0")),
+        .package(url: "https://github.com/akira-toriyama/sill", .upToNextMinor(from: "8.9.0")),
     ],
     targets: [
-        .target(name: "GlanceCore"),
+        .target(name: "GlanceCore",
+                dependencies: [.product(name: "LogKit", package: "sill")]),
         .target(
             name: "GlanceAdapterMacOS",
             dependencies: [

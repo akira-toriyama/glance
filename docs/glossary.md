@@ -40,7 +40,7 @@ flowchart TB
     ARGS["Args / parseArgs"]
     DEFAULTS["Defaults + HelpText"]
     GEOM["PanelGeometry (height / anchor → frame / clamp)"]
-    LOG["Log (line / debug)"]
+    LOG["log (sill LogKit: line / debug)"]
     VERSION["GlanceVersion"]
   end
   subgraph ADAPTER["GlanceAdapterMacOS — AppKit only here"]
@@ -71,7 +71,7 @@ flowchart TB
 
 ### GlanceCore
 The **pure-logic layer**. `Args` / `parseArgs` / `Defaults` / `HelpText` /
-`PanelGeometry` / `Log` / `GlanceVersion` live here. Foundation only — no AppKit. The unit-testable range under
+`PanelGeometry` / `GlanceVersion` / the `log` instance (sill `LogKit`) live here. Foundation only — no AppKit. The unit-testable range under
 XCTest.
 - Location: [`Sources/GlanceCore/`](../Sources/GlanceCore/)
 - **Don't call it:** parser module, domain layer
@@ -219,11 +219,12 @@ frame / dismiss, …). **Silent** in normal operation ("no result shows" →
 suspect the upstream pipeline).
 - **Don't call it:** debug log, trace file
 
-### `Log.line` / `Log.debug`
-The 2 functions in `GlanceCore`. `Log.line` is always ON; `Log.debug` is
-gated by `GLANCE_DEBUG`. Same shape as the house style (aligned with
-facet / wand / perch).
-- **Don't call it:** info / verbose log
+### `log.line` / `log.debug`
+The 2 methods of the `log` instance in `GlanceCore` — sill `LogKit`'s
+`Log(app: "glance")`, the family shape lifted once (facet / wand / perch /
+chord / halo carry the same). `log.line` is always ON; `log.debug` is
+gated by `GLANCE_DEBUG`. glance has no Log.swift of its own.
+- **Don't call it:** Log.line / Log.debug (the old static enum), info / verbose log
 
 ---
 
