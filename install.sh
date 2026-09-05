@@ -13,7 +13,6 @@ install -m 0755 "$DIR/bin/glance" "$BIN"
 
 echo "installed: $BIN"
 
-# On PATH? If not, say how.
 case ":$PATH:" in
     *":$HOME/.local/bin:"*) ;;
     *) echo "note: $HOME/.local/bin is not on PATH. Add it in .zshrc / .bashrc:"

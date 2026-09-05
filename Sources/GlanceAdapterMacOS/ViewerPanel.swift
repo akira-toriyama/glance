@@ -33,19 +33,15 @@ public final class ViewerPanel {
     private static let codeBlockParagraphSpacing: CGFloat = 6
     private static let blockquoteIndent: CGFloat = 16
 
-    /// glance's panel chrome derives from ONE fixed dark sill preset.
-    /// catppuccin-mocha (#1E1E2E ≈ the old hardcoded #1E1E1E) is chosen, and
-    /// the bg / body / markdown role colors come from resolve()'s derivation
-    /// recipes + the ink() tiers (plan atelier — the north star: never again
-    /// say "imitate facet's theme"). No theme switching — glance is an
-    /// ephemeral result-view popover, not a theming surface. Highlightr's
-    /// `--theme` (code syntax) is orthogonal and untouchable (a separate
-    /// axis; its 271 themes stay alone).
-    /// Held as a typed `Theme` — passing a raw string to `paletteFor` is
-    /// TOTAL over an untyped domain, silently falling to `terminal` when a
-    /// theme leaves the catalog (exactly how sill v1.36.0's removal of
-    /// `catppuccin-latte` broke wand). A case is a declaration: if it
-    /// disappears, the compile error tells you.
+    /// One fixed dark sill preset (catppuccin-mocha, #1E1E2E ≈ the old
+    /// hand-tuned #1E1E1E) and no theme switching: glance is a transient
+    /// result-view popover, not a themed surface. Highlightr's `--theme`
+    /// (code syntax) is a separate axis and stays untouched.
+    ///
+    /// A typed `Theme`, not a name string: `paletteFor` is total over
+    /// strings and silently falls back to `terminal` when a theme leaves
+    /// the catalog (how sill v1.36.0's removal of `catppuccin-latte` broke
+    /// wand). A removed case is a compile error instead.
     private static let chromeTheme = Theme.catppuccinMocha
     private static func chromePalette() -> ResolvedPalette {
         // forceDark: the theme is dark, so pin NSTextView selection / find
@@ -62,17 +58,12 @@ public final class ViewerPanel {
         self.args = args
         self.text = text
         self.onDismiss = onDismiss
-        // Resolve the fixed dark chrome from sill once. Panel bg / body
-        // color / markdown role colors all derive from it.
         let palette = Self.chromePalette()
-        // Configure the syntax highlighter from the CLI before rendering
-        // (MarkdownRenderer reads it at render time). `--no-highlight`
-        // never boots Highlightr at all (skipping the ~30-100ms JSCore
-        // start).
+        // Before rendering: MarkdownRenderer reads the highlighter at render
+        // time. `--no-highlight` never boots Highlightr (the JSCore start is
+        // the slow part).
         MarkdownRenderer.configureSyntaxHighlighter(
             theme: args.theme ?? Defaults.theme, enabled: !args.noHighlight)
-        // Passed as MarkdownRenderer.Style.baseFontSize; the heading
-        // hierarchy derives from it by multipliers.
         let fontSize = CGFloat(args.fontSize ?? Defaults.fontSize)
         let attributed = Self.renderAttributed(
             text: text, markdown: args.markdown, fontSize: fontSize,
@@ -84,8 +75,8 @@ public final class ViewerPanel {
             palette: palette, hud: args.hud)
     }
 
-    /// Geometry: measure the text at the panel width, then PanelGeometry
-    /// (GlanceCore) decides height, anchor and the screen clamp.
+    /// AppKit measures the text here; PanelGeometry (GlanceCore, tested)
+    /// decides everything after that.
     private static func frame(for attributed: NSAttributedString,
                               args: Args) -> NSRect {
         let w = CGFloat(args.width ?? Defaults.width)
@@ -133,10 +124,6 @@ public final class ViewerPanel {
                                     .fullScreenAuxiliary,
                                     .transient]
         panel.isMovableByWindowBackground = true
-        // The chrome background is the sill preset's (catppuccin-mocha)
-        // background. In HUD mode the panel itself goes transparent and the
-        // root's rounded layer shows the rounded dark; otherwise the panel
-        // lays chromeBackground directly.
         if palette.forceDarkAqua {
             panel.appearance = NSAppearance(named: .darkAqua)
         }
@@ -151,17 +138,13 @@ public final class ViewerPanel {
         return panel
     }
 
-    /// root (fixed dark layer, rounded under HUD) → NSScrollView →
-    /// NSTextView on a hand-built TextKit 1 stack.
     private static func makeContent(attributed: NSAttributedString,
                                     frame: NSRect, fontSize: CGFloat,
                                     palette: ResolvedPalette,
                                     hud: Bool) -> NSView {
-        // root: the fixed chrome background's CGColor. A layer bg never
-        // tracks appearance dynamically, so windowBackgroundColor would bake
-        // in the current app appearance (often light at launch),
-        // contradicting the panel's darkAqua forcing. chromeBackground is an
-        // opaque concrete color — fine.
+        // A layer background never tracks appearance changes, so it gets the
+        // concrete chrome color, not windowBackgroundColor (which would bake
+        // in whatever app appearance was current at launch, often light).
         let root = NSView(frame: NSRect(origin: .zero, size: frame.size))
         root.autoresizingMask = [.width, .height]
         root.wantsLayer = true
@@ -171,9 +154,7 @@ public final class ViewerPanel {
             root.layer?.masksToBounds = true
         }
 
-        // contentView: a scrollable NSTextView. Its background is
-        // transparent, letting the root's dark show through (the root is
-        // fixed dark, so the result is always a VSCode-like dark bg).
+        // Transparent, so the root's fixed dark shows through.
         let scroll = NSScrollView(frame: NSRect(origin: .zero, size: frame.size))
         scroll.hasVerticalScroller = true
         scroll.borderType = .noBorder
@@ -232,12 +213,9 @@ public final class ViewerPanel {
         ])
     }
 
-    /// The Style handed to MarkdownRenderer. Typography constants come from
-    /// ViewerPanel, colors from the resolved palette. The neutral
-    /// white-alpha overlays derive from sill's shared `ink` tiers
-    /// (foreground-tinted, so theme-tracking): wash ≈ inline pill / outer
-    /// rules; subtle ≈ block & header bg, heading underline; strong ≈ the
-    /// blockquote bar.
+    /// Typography from ViewerPanel's constants, colors from the resolved
+    /// palette. The overlays are sill `ink` tiers of `foreground` rather
+    /// than hand-picked white alphas, so they track the theme.
     private static func rendererStyle(fontSize: CGFloat,
                                       palette: ResolvedPalette) -> MarkdownRenderer.Style {
         MarkdownRenderer.Style(

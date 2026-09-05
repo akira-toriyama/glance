@@ -7,8 +7,8 @@ import Markdown
 ///
 /// It used `NSAttributedString(markdown:)` before, but tables / task lists /
 /// strikethrough / footnotes never rendered under that constraint, so a
-/// hand-rolled visitor replaced it. Typography injects from outside via
-/// `Style`, kept in sync with ViewerPanel's constants.
+/// hand-rolled visitor replaced it. Typography and colors come in through
+/// `Style`; the renderer owns no constants of its own.
 public struct MarkdownRenderer {
 
     public struct Style {
@@ -88,10 +88,10 @@ public struct MarkdownRenderer {
         self.style = style
     }
 
-    /// The shared Highlightr instance. Defaults: atom-one-dark, highlighting
-    /// on. For `--theme` / `--no-highlight`, ViewerPanel calls `configure` to
-    /// swap the whole instance (one process, one panel — no race). glance is
-    /// single-threaded UI, so nonisolated(unsafe) is safe.
+    /// The shared Highlightr instance. ViewerPanel swaps the whole instance
+    /// via `configure` before the first render (`--theme` /
+    /// `--no-highlight`); one process shows one panel, so no write follows,
+    /// and nonisolated(unsafe) rides on the single UI thread.
     nonisolated(unsafe) fileprivate static var syntaxHighlighter = SyntaxHighlighter()
 
     public static func configureSyntaxHighlighter(theme: String?,
@@ -420,7 +420,7 @@ private struct Visitor: MarkupVisitor {
         p.lineSpacing = style.bodyLineSpacing
         p.textBlocks = [block]
 
-        // The cell ends with \n to terminate the paragraph (closing it).
+        // \n closes the cell's paragraph (as in visitCodeBlock).
         inner.append(NSAttributedString(string: "\n"))
         let r = NSRange(location: 0, length: inner.length)
         inner.addAttribute(.paragraphStyle, value: p, range: r)
@@ -457,7 +457,6 @@ private struct Visitor: MarkupVisitor {
     }
 
     private mutating func listItemPrefix(_ item: ListItem) -> String? {
-        // A GFM task list puts its value in ListItem.checkbox.
         switch item.checkbox {
         case .checked:   return "☑  "
         case .unchecked: return "☐  "
@@ -484,7 +483,7 @@ private struct Visitor: MarkupVisitor {
                 out.append(NSAttributedString(string: "\n", attributes: bodyAttrs()))
             }
         }
-        // Apply headIndent to every paragraphStyle in the ListItem (nesting).
+        // Wrapped lines and nested blocks align under the prefix.
         let r = NSRange(location: 0, length: out.length)
         out.enumerateAttribute(.paragraphStyle, in: r) { value, range, _ in
             let ps = (value as? NSParagraphStyle).flatMap {
@@ -579,7 +578,7 @@ private struct Visitor: MarkupVisitor {
             if isHeader {
                 applyTrait(.boldFontMask, to: inner)
             }
-            // The cell ends with a newline = paragraph end (textBlock boundary).
+            // \n closes the cell's paragraph (as in visitCodeBlock).
             inner.append(NSAttributedString(string: "\n"))
             let r = NSRange(location: 0, length: inner.length)
             inner.addAttribute(.paragraphStyle, value: p, range: r)

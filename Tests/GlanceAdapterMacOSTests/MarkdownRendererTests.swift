@@ -116,11 +116,9 @@ final class MarkdownRendererTests: XCTestCase {
     }
 
     func testCodeBlockWithoutLanguageHasNoLabel() {
-        // No language given → no label (the label triggers only on an explicit vocabulary).
+        // No language → no label paragraph: the output is the code alone.
         let out = render("```\nplain code\n```")
-        // "plain code" is present, but no standalone language-name token
-        // like "swift" / "python"
-        XCTAssertTrue(out.string.contains("plain code"))
+        XCTAssertEqual(out.string, "plain code\n")
     }
 
     func testLinkRunHasURLAttribute() {

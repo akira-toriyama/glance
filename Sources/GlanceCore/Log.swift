@@ -1,19 +1,10 @@
-// glance verbose logging — mirrors the family convention (facet / chord /
-// wand / perch): a `debugMode` global, set once at startup from the
-// `GLANCE_DEBUG` env var (run.sh's --demo path sets it; a normal pipe
-// invocation stays quiet). There is no `--debug` flag.
+// glance verbose logging in the family shape (facet / chord / wand /
+// perch): one `debugMode` global set at startup from the `GLANCE_DEBUG`
+// env var. There is no `--debug` flag, so a normal pipe invocation cannot
+// turn it on by accident; run.sh's --demo path opts in explicitly.
 //
-// Two levels:
-//   - `Log.line`  — always on (operational events worth seeing in a report).
-//   - `Log.debug` — no-op unless `debugMode == true`. Use for arg parsing,
-//                   stdin size, panel geometry, dismissal.
-//
-// Output:
-//   - `/tmp/glance.log` — every emitted line. Nothing calls `Log.line`
-//     today, so a normal pipe run writes nothing; only `GLANCE_DEBUG=1`
-//     produces the trace.
-//   - stderr — only when `debugMode == true`, so a normal pipe run stays
-//     quiet and a `GLANCE_DEBUG=1 … | glance …` dev run streams live.
+// `Log.line` has no caller in glance. It stays so the file keeps the
+// family shape until sill's Log atom replaces all six copies (t-pggc).
 
 import Foundation
 
@@ -24,10 +15,8 @@ nonisolated(unsafe) public var debugMode = false
 public enum Log {
     public static let path = "/tmp/glance.log"
 
-    /// Always-on operational line. Also mirrors to stderr when GLANCE_DEBUG is set.
     public static func line(_ s: String) { emit(s, prefix: "") }
 
-    /// Verbose log line. No-op unless `debugMode == true`.
     public static func debug(_ s: String) {
         guard debugMode else { return }
         emit(s, prefix: "DEBUG ")
