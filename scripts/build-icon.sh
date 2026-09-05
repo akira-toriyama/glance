@@ -25,7 +25,6 @@ import Foundation
 let symbol = CommandLine.arguments[1]
 let outDir = CommandLine.arguments[2]
 
-// amber accent on near-black rounded square
 let bgColor = NSColor(red: 0.10, green: 0.08, blue: 0.06, alpha: 1.0)
 let fgColor = NSColor(red: 0.95, green: 0.71, blue: 0.30, alpha: 1.0)
 

@@ -11,9 +11,7 @@ enum GlanceApp {
     @MainActor
     static func main() {
         let argv = Array(CommandLine.arguments.dropFirst())
-        // Verbose logging is env-var-triggered (GLANCE_DEBUG=1) — run.sh's
-        // --demo path sets it; a normal pipe invocation stays quiet. There is
-        // no --debug flag (matches the facet/chord/wand/perch family).
+        // GLANCE_DEBUG only — no --debug flag (family convention; Log.swift).
         debugMode = ProcessInfo.processInfo.environment["GLANCE_DEBUG"] != nil
         let action: ArgsAction
         do {
@@ -41,8 +39,7 @@ enum GlanceApp {
         }
     }
 
-    /// Boot AppKit, show the NSPanel, terminate on user action.
-    /// `setActivationPolicy(.accessory)` keeps it out of the Dock.
+    /// `.accessory`: a transient popover gets no Dock icon and no menu bar.
     @MainActor
     static func runViewer(text: String, args: Args) {
         let app = NSApplication.shared
