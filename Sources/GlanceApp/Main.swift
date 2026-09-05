@@ -11,8 +11,6 @@ enum GlanceApp {
     @MainActor
     static func main() {
         let argv = Array(CommandLine.arguments.dropFirst())
-        // GLANCE_DEBUG only — no --debug flag (family convention; Log.swift).
-        debugMode = ProcessInfo.processInfo.environment["GLANCE_DEBUG"] != nil
         let action: ArgsAction
         do {
             action = try parseArgs(argv)
@@ -27,12 +25,12 @@ enum GlanceApp {
         case .showVersion: print("glance \(GlanceVersion.current)"); exit(0)
         case .viewer(let args):
             let text = readStdin()
-            Log.debug("stdin: \(text.count) chars; markdown=\(args.markdown) "
+            log.debug("stdin: \(text.count) chars; markdown=\(args.markdown) "
                 + "title=\(args.title.isEmpty ? "—" : args.title)")
             // Empty input is a silent no-op (when curl fails in a
             // pipeline, an empty panel would just be noise).
             guard !text.isEmpty else {
-                Log.debug("stdin empty — silent no-op exit")
+                log.debug("stdin empty — silent no-op exit")
                 exit(0)
             }
             runViewer(text: text, args: args)
@@ -50,7 +48,7 @@ enum GlanceApp {
             app.terminate(nil)
         }
         viewer.present()
-        Log.debug("panel presented — entering run loop")
+        log.debug("panel presented — entering run loop")
         app.run()
     }
 

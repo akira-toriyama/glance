@@ -241,7 +241,7 @@ public final class ViewerPanel {
     /// app keeps keyboard focus. Under `--copy` the shown text also goes to
     /// the pasteboard (for the paste-the-translation-later flow).
     public func present() {
-        Log.debug("present: frame=\(panel.frame) sticky=\(args.sticky) "
+        log.debug("present: frame=\(panel.frame) sticky=\(args.sticky) "
             + "autoClose=\(args.autoCloseSeconds.map { String($0) } ?? "off") copy=\(args.copy)")
         if args.copy {
             let pb = NSPasteboard.general
@@ -294,7 +294,7 @@ public final class ViewerPanel {
     }
 
     private func dismiss() {
-        Log.debug("dismiss")
+        log.debug("dismiss")
         if let m = clickOutsideMonitor {
             NSEvent.removeMonitor(m)
             clickOutsideMonitor = nil

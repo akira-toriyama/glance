@@ -42,8 +42,9 @@ Sources/
   GlanceCore/             pure logic: the argv parser (Args / parseArgs /
                           errors), Defaults + HelpText, PanelGeometry
                           (auto-height clamp / anchor → frame / screen
-                          clamp), Log, GlanceVersion. Foundation only — no
-                          AppKit. Unit-testable under XCTest.
+                          clamp), GlanceVersion, the `log` instance (sill
+                          LogKit). Foundation only — no AppKit.
+                          Unit-testable under XCTest.
   GlanceAdapterMacOS/     ViewerPanel: creates the NSPanel / mounts the
                           NSTextView / dismisses via NSEvent monitors
                           (click-outside, Esc). MarkdownRenderer (the
@@ -173,8 +174,10 @@ Fast paths for investigation:
 
 **The only verbose trigger is the `GLANCE_DEBUG` environment variable**
 (there is no `--debug` flag — unified with the facet/chord/wand/perch
-family). A normal pipe launch never sets it and stays quiet. `Log`
-(always-on `Log.line` + gated `Log.debug`) lives in `GlanceCore`.
+family). A normal pipe launch never sets it and stays quiet. The logger
+is sill's `LogKit` (`Log(app: "glance")`, the `log` instance in
+`GlanceCore`; always-on `log.line` + gated `log.debug`) — glance carries
+no Log.swift of its own.
 
 ## Conventions
 
@@ -247,7 +250,8 @@ module → target wiring: [Package.swift](Package.swift) is the truth.
 - **[sill](https://github.com/akira-toriyama/sill)** — the shared theming
   foundation; design →
   [`docs/DESIGN.md`](https://github.com/akira-toriyama/sill/blob/main/docs/DESIGN.md).
-  glance uses: `Palette` / `PaletteKit` (theming only).
+  glance uses: `Palette` / `PaletteKit` (theming) and `LogKit` (the
+  `/tmp/glance.log` + `GLANCE_DEBUG` logger, from `GlanceCore`).
 - **[swift-toml-edit](https://github.com/akira-toriyama/swift-toml-edit)**
   (the family's only TOML implementation) is **unused** in glance (a
   data-processing app with no config.toml).
