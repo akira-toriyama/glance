@@ -33,7 +33,7 @@ jobs:
     # `contents: write` as overly broad once version-sync (read-only) exists.
     permissions:
       contents: write
-    uses: akira-toriyama/glyph/.github/workflows/release.yml@v3.1.0
+    uses: akira-toriyama/glyph/.github/workflows/release.yml@v3.2.0
     with:
       binary: glance
       dry-run: ${{ github.event.inputs.dry_run == 'true' }}
