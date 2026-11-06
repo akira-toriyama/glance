@@ -1,5 +1,5 @@
 {
-  "originHash" : "86381681b48f412b71becb3670f90167f4a3da10cecd69047255062ebf771add",
+  "originHash" : "d3d882407dc0d52e1e4ce6227f246202c7ff16e7806b5f29ce14234635217f5e",
   "pins" : [
     {
       "identity" : "highlightr",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/akira-toriyama/sill",
       "state" : {
-        "revision" : "c6ded4d47b5e62f5038bc334dee8c787a3611522",
-        "version" : "8.9.0"
+        "revision" : "bdecf6fb14ba7326fd1607b1755280896cb2d869",
+        "version" : "8.9.1"
       }
     },
     {
@@ -51,8 +51,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/swhitty/SwiftDraw.git",
       "state" : {
-        "revision" : "dbb4ef98824053ead8c83fa866c2c6054fb41809",
-        "version" : "0.24.0"
+        "revision" : "82699f4bdf2f075793cfa0d392eb27c59b41a3fe",
+        "version" : "0.29.0"
       }
     }
   ],
