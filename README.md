@@ -228,7 +228,7 @@ The panel goes away when:
 ./run.sh                   # build + run a verbose demo (GLANCE_DEBUG=1; panel + /tmp/glance.log)
 ./run.sh --install         # deploy to ~/.local/bin (= ./install.sh, quiet)
 ./stop.sh                  # kill any stuck glance panels (rare)
-./setup-signing-cert.sh    # one-time: persistent self-signed identity
+./setup-signing-cert.sh    # one-time: persistent self-signed identity (asks for your login password once)
 ./scripts/build-icon.sh    # regenerate AppIcon.icns
 swift test                 # XCTest (GlanceCoreTests + GlanceAdapterMacOSTests); needs full Xcode, see below
 ```
