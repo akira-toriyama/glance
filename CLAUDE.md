@@ -71,8 +71,23 @@ Builds are SwiftPM (`swift build -c release`). `build.sh` wraps it: places
 | `./run.sh --install` / `-i` | delegates to `install.sh` (place into `~/.local/bin/glance`, quiet). The analogue of other apps' brew install |
 | `./stop.sh` | `pkill` any stuck panel. Normally user dismiss self-terminates |
 | `./install.sh` | build → place into `~/.local/bin/glance` |
-| `./setup-signing-cert.sh` | create the persistent self-signed identity (`glance-dev`) |
+| `./setup-signing-cert.sh` | create the persistent self-signed identity (`glance-dev`) and let `codesign` use its key; asks for the login password once, on a terminal, only when the key still needs it |
 | `./scripts/build-icon.sh` | generate `AppIcon.icns` from an SF Symbol (`text.viewfinder` / amber) |
+
+`setup-signing-cert.sh` widens the key's partition list to
+`apple-tool:,apple:,codesign:` only when the key lacks `apple:`, asking for
+the login password on the terminal. `security import -A` leaves it at
+`apple-tool:`, which keeps `codesign` out (`errSecInternalComponent` over
+ssh, a SecurityAgent dialog in a GUI session, an unattended rebuild hanging
+there). A usable key is a silent exit 0; a key that needs the list exits 1
+with a message when stdin or stderr is not a terminal — the family contract
+for unattended callers (capsule's `verify.sh`, the tap formulas), of which
+glance has none today (no capsule profile; the tap's `glance.rb` does not
+call it). It uses `/usr/bin/openssl` (LibreSSL) without `-legacy`, so it
+does not depend on Homebrew's openssl. Read the list back with
+`security dump-keychain -a` with the keychain unlocked (a locked one shows
+no `partition_id` entry). Measured in a Tart VM (macOS 26.5, 2026-11-08);
+on this Mac the facet / halo / perch / wand keys already carry `apple:`.
 
 Production placement is also `~/.local/bin/glance` (not a daemon, so no
 LaunchAgent), or Homebrew via `akira-toriyama/tap/glance` (the formula
